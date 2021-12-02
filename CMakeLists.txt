@@ -30,7 +30,7 @@ cmake_minimum_required(VERSION 3.0)
 ######
 
 ###### PROJECT NAME AND VERSION ######
-set(EXEC_NAME stewart_platform)
+set(EXEC_NAME CleverHand-plotter)
 set(PROJECT_VERSION 1.0)
 project(${EXEC_NAME} VERSION ${PROJECT_VERSION})
 
@@ -46,14 +46,22 @@ if(0)
   set(EXTRA_LIBS "pthread" "util")
 endif()
 
-find_package(Boost 1.56 REQUIRED COMPONENTS system filesystem iostreams)
-if (Boost_FOUND)
-  list(APPEND EXTRA_LIBS ${Boost_IOSTREAMS_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${Boost_FILESYSTEM_LIBRARY})
+if(0)
+  find_package(Boost 1.56 REQUIRED COMPONENTS system filesystem iostreams)
+  if (Boost_FOUND)
+    list(APPEND EXTRA_LIBS ${Boost_IOSTREAMS_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${Boost_FILESYSTEM_LIBRARY})
+  else ()
+    message("Couldn't find Boost library")
+  endif (Boost_FOUND)
+endif()
+
+
+find_package(SFML REQUIRED COMPONENTS graphics window system)
+if (SFML_FOUND)
+  list(APPEND EXTRA_LIBS "sfml-graphics" "sfml-window" "sfml-system")
 else ()
-  message("Couldn't find Boost library")
-endif (Boost_FOUND)
-
-
+  message("Couldn't find SFML library")
+endif (SFML_FOUND)
 
 
 ###### Get the sources and headers ######

@@ -42,7 +42,7 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 ###### Special libraries ######
-if(0)
+if(1)
   set(EXTRA_LIBS "pthread" "util")
 endif()
 

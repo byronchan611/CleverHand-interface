@@ -1,159 +1,154 @@
-#include <SFML/Graphics.hpp>
+#include <cstring>
 #include <iostream>
+#include <string>
 #include <thread>
 #include <vector>
 
-class graph;
-class plot;
+// Linux headers
+#include <errno.h>   // Error integer and strerror() function
+#include <fcntl.h>   // Contains file controls like O_RDWR
+#include <termios.h> // Contains POSIX terminal control definitions
+#include <unistd.h>  // write(), read(), close()
 
-int winH = 500;
-int winW = 1000;
-int maxY = 255, maxX = 3000;
-float incX = (winW - 100) / float(maxX);
+#include <stdio.h>
+
+#define GLOBAL_VERBOSE_LEVEL 0
+
+#define CONFIG_REG 0x00
+
+#define FLEX_CH1_CN_REG 0x01
+#define FLEX_CH2_CN_REG 0x02
+#define FLEX_CH3_CN_REG 0x03
+#define FLEX_PACE_CN_REG 0x04
+#define FLEX_VBAT_CN_REG 0x05
+
+#define OSC_CN_REG 0x12
+
+#define AFE_SHDN_CN_REG 0x14
+#define AFE_PACE_CN_REG 0x17
+
+#define ERROR_STATUS_REG 0x19
+
+#define DATA_STATUS_REG 0x30
+
+// #define _REG 0x
+// #define _REG 0x
+// #define _REG 0x
+// #define _REG 0x
+// #define _REG 0x
+// #define _REG 0x
+
+
 
 void
-GUI_thread(sf::Image &graph)
+display(std::string s, int v_lvl = 1)
 {
-    sf::RenderWindow window(sf::VideoMode(winW, winH), "SFML works!");
-    //window.setVerticalSyncEnabled(true);
-    //window.setFramerateLimit(60);
-
-    sf::RectangleShape axis[2];
-    for(int i = 0; i < 2; i++)
-    {
-        float px = 50 - (1 - i) * 20;
-        float py = winH - 50 + i * 20;
-        float l = (1 - i) * (winW - 2 * px) + i * (py - 50);
-        float a = -90.f * i;
-        axis[i].setSize(sf::Vector2f(l, 1.f));
-        axis[i].setFillColor(sf::Color::Black);
-        axis[i].setPosition(px, py);
-        axis[1].rotate(a);
-    }
-
-    sf::RectangleShape incs[2][4];
-    for(int i = 0; i < 2; i++)
-    {
-        for(int j = 0; j < 4; j++)
-        {
-            float px = 50 - i * 5 + 100 * j * (1 - i);
-            float py = winH - 50 + (1 - i) * 5 - 100 * j * i;
-            float l = 10;
-            float a = -90.f * (1-i);
-            incs[i][j].setSize(sf::Vector2f(l, 1.f));
-            incs[i][j].setFillColor(sf::Color::Black);
-            incs[i][j].setPosition(px, py);
-            incs[i][j].rotate(a);
-        }
-    }
-
-    window.clear(sf::Color(255, 255, 255));
-    for(int i = 0; i < 2; i++) window.draw(axis[i]);
-    for(int i = 0; i < 2; i++)
-        for(int j = 0; j < 4; j++) window.draw(incs[i][j]);
-
-    sf::Vector2u size(maxX, maxY);
-
-    sf::Texture tex;
-    tex.loadFromImage(graph);
-    sf::Sprite sprite(tex);
-    sprite.setPosition(53, 48);
-
-    while(window.isOpen())
-    {
-        sf::Event event;
-        while(window.pollEvent(event))
-        {
-            if(event.type == sf::Event::Closed)
-                window.close();
-        }
-
-        tex.update(graph);
-
-        window.clear(sf::Color(255, 255, 255));
-
-        window.draw(sprite);
-        for(int i = 0; i < 2; i++) window.draw(axis[i]);
-        for(int i = 0; i < 2; i++)
-            for(int j = 0; j < 4; j++) window.draw(incs[i][j]);
-
-        window.display();
-    }
+    if(v_lvl > GLOBAL_VERBOSE_LEVEL)
+        std::cout << s;
+}
+void
+displayln(std::string s, int v_lvl = 1)
+{
+    if(v_lvl > GLOBAL_VERBOSE_LEVEL)
+      std::cout << s <<"\n";
 }
 
-class graph
+void
+displayError(const char *s)
 {
-    public:
-    graph();
+    printf("\"Error %i from %s: %s\"\n", errno, s, strerror(errno));
+    exit(1);
+}
 
-    void
-    setPix(int x, int y, sf::Color &col)
-    {
-        _img.setPixel(x, y, col);
-    };
-
-    void
-    clrPix(int x, int y)
-    {
-        _img.setPixel(x, y, _color);
-    };
-
-    int _w;
-    int _h;
-    sf::Color _color;
-    sf::Image _img;
-    std::vector<plot> _plots;
-};
-
-class plot
+void
+printBit(int8_t val)
 {
-    public:
-    plot();
+    display(" ");
+    for(int i = 0; i < 8; i++)
+        if(1 & (val >> i))
+            display("[" + std::to_string(i) + "] ");
+}
 
-    void
-    addPoint(int x, int y)
-    {
-        _values[x] = y;
-        _graph.setPix(x, y, _color);
-    };
+int setSerialPort(const char* path)
+{
+   display("> Check connection: ");
+   int serial_port = open(path, O_RDWR);
+    if(serial_port)
+        display("OK\n");
 
-    void
-    clear()
-    {
-        for(int i = 0; i < _values.size(); i++) _graph.clrPix(i, _values[i]);
-    };
+    struct termios tty;
+    if(tcgetattr(serial_port, &tty) != 0)
+        displayError("tcgetattr");
 
-    private:
-    graph &_graph;
-    sf::Image &_graphImg;
-    std::vector<int32_t> _values;
-    sf::Color _color;
-};
+    tty.c_cflag &= ~PARENB;  // Clear parity bit, disabling parity (most common)
+    tty.c_cflag &= ~CSTOPB;  // Clear stop field, only 1 stop bit (most common)
+    tty.c_cflag &= ~CSIZE;   // Clear all bits that set the data size
+    tty.c_cflag |= CS8;      // 8 bits per byte (most common)
+    tty.c_cflag &= ~CRTSCTS; // Disable RTS/CTS hardware flow ctrl (most common)
+    tty.c_cflag |= CREAD | CLOCAL; // Turn on READ & ignore ctrlline(CLOCAL = 1)
+    tty.c_lflag &= ~ICANON;
+    tty.c_lflag &= ~ECHO;   // Disable echo
+    tty.c_lflag &= ~ECHOE;  // Disable erasure
+    tty.c_lflag &= ~ECHONL; // Disable new-line echo
+    tty.c_lflag &= ~ISIG;   // Disable interpretation of INTR, QUIT and SUSP
+    tty.c_iflag &= ~(IXON | IXOFF | IXANY); // Turn off s/w flow ctrl
+    tty.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR |
+                     ICRNL); // Disable any special handling of received bytes
+
+    tty.c_oflag &= ~OPOST; // Prevent spe. interp. of out bytes (newline chars)
+    tty.c_oflag &= ~ONLCR; // Prevent conv of newline to car. ret/line feed
+    // tty.c_oflag &= ~OXTABS; // Prevent conversion of tabs to spaces (NOT PRESENT ON LINUX)
+    // tty.c_oflag &= ~ONOEOT; // Prevent removal of C-d chars (0x004) in output (NOT PRESENT ON LINUX)
+
+    tty.c_cc[VTIME] = 10; // Wait for up to 1s, ret when any data is received.
+    tty.c_cc[VMIN] = 0;
+
+    // Set in/out baud rate to be 9600
+    cfsetispeed(&tty, B9600);
+    cfsetospeed(&tty, B9600);
+
+    // Save tty settings, also checking for error
+    if(tcsetattr(serial_port, TCSANOW, &tty) != 0)
+        displayError("tcsetattr");
+    return serial_port;
+}
+
+void readReg(int fd, uint8_t reg, char* buff, size_t size) 
+{
+  char msg[3] = {'r', (char)reg, (char)size};
+  write(fd, msg, 3);
+  read(fd, buff, size);
+}
+
+void writeReg(int fd, uint8_t reg, char val) 
+{
+  char msg[3] = {'w', (char)reg, (char)val};
+  write(fd, msg, 3);
+}
+
+void setup(int fd)
+{
+  writeReg(fd, CONFIG_REG, 0x02); //standby 
+  writeReg(fd, OSC_CN_REG, 0x05); //clk xtal output on CLK pin
+   writeReg(fd, FLEX_CH1_CN_REG, 0x31); // route ch 1
+   writeReg(fd, AFE_SHDN_CN_REG, 0x36); //dis ch 2 and 3
+   writeReg(fd, AFE_PACE_CN_REG, 0x00); // dis pace ch
+}
 
 int
 main()
 {
-    sf::Image graph;
+    display("CleverHand Serial Interface:\n");
+   
 
-    graph.create(winW - 100, winH - 100, sf::Color(255, 255, 0));
-    std::thread t1(GUI_thread, std::ref(graph));
+    int serial_port = setSerialPort("/dev/ttyACM0");
+   
 
-    sf::Clock clock;
-    std::vector<int32_t> plot(maxX);
-    int32_t time = 0, prev_time = 0;
-    while(1)
-    {
-        time = (clock.getElapsedTime().asMilliseconds()) % maxX;
-        if(time < prev_time)
-            for(int i = 0; i < maxX; i++)
-                graph.setPixel(i, plot[i], sf::Color(255, 255, 255));
-        prev_time = time;
+    writeReg(serial_port, 0x2f, 0x01);
+    uint16_t val = 0;
+    readReg(serial_port, 0x2e, (char*)&val, 2);
 
-        plot[time * incX] = int(time * incX) % maxY;
-
-        graph.setPixel(time * incX, plot[time * incX], sf::Color(0, 0, 0));
-        std::cout << incX * time << std::endl;
-    }
-    t1.join();
-    return 0;
+    std::cout << std::hex<<(int) val << std::endl;
+    close(serial_port);
+    return 0; // success
 }

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.3)
 ###### Author: Alexis Devillard
 ###### Date:   27/01/2020
 ###### Brief: This CmakeLists.txt file enable to build generic project with the following structure:
@@ -85,17 +85,29 @@ include(CMakeFunctions.txt)
 
 
 ###### Search for Subdirectories/Libraries ######
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/lib") 
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/lib")
+  set(SUBMODULES_LIST "built_lsl")
+  execute_process(COMMAND git submodule status
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    OUTPUT_VARIABLE SUBMODULES_LIST)
   subdirlist(LIBS "${CMAKE_CURRENT_SOURCE_DIR}/lib/")
   foreach(subdir ${LIBS})
+    string(FIND "${SUBMODULES_LIST}" "${subdir}" FOUND)
+    if(${FOUND} GREATER -1)
     #git submodules init
     execute_process(COMMAND git submodule update --init -- "lib/${subdir}"
-                    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-    add_subdirectory("lib/${subdir}")
-    #get the version
-    subproject_version("${subdir}" subdir_version)
-    message("-- ${EXEC_NAME}: Added library ${subdir} version: ${subdir_version}")
-    list(APPEND EXTRA_LIBS "${subdir}.${subdir_version}")
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} OUTPUT_VARIABLE OUTPUT)
+      add_subdirectory("lib/${subdir}")
+      #get the version
+      subproject_version("${subdir}" subdir_version)
+      message("-- ${EXEC_NAME}: Added library ${subdir} version: ${subdir_version}")
+      list(APPEND EXTRA_LIBS "${subdir}.${subdir_version}")
+    else()
+      #add_subdirectory("lib/${subdir}")
+      message("-- ${EXEC_NAME}: Added library ${subdir}")
+      list(APPEND EXTRA_LIBS "${subdir}")
+      link_directories(${CMAKE_SOURCE_DIR}/lib/${subdir})
+    endif()
   endforeach()
 endif()
 

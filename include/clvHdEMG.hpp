@@ -8,35 +8,18 @@
 #include <vector>
 
 #include "clvHdMaster.hpp"
+#include "registers.hpp"
+namespace ClvHd
+{
+class Master;
 
-class ClvHdMaster;
-class ClvHdEMG
+class EMG
 {
     enum Mode
     {
         START_CONV = 0x1,
         STANDBY = 0x2,
         POWER_DOWN = 0x4
-    };
-    enum Reg
-    {
-        CONFIG_REG = 0x00,
-        FLEX_CH1_CN_REG = 0x01,
-        FLEX_CH2_CN_REG = 0x02,
-        FLEX_CH3_CN_REG = 0x03,
-        FLEX_PACE_CN_REG = 0x04,
-        FLEX_VBAT_CN_REG = 0x05,
-        OSC_CN_REG = 0x12,
-        AFE_RES_REG = 0x13,
-        AFE_SHDN_CN_REG = 0x14,
-        AFE_PACE_CN_REG = 0x17,
-        ERROR_STATUS_REG = 0x19,
-        DATA_STATUS_REG = 0x30,
-        R1_RATE_REG = 0x25,
-        R2_RATE_REG = 0x21,
-        R3_RATE_CH1_REG = 0x22,
-        R3_RATE_CH2_REG = 0x23,
-        R3_RATE_CH3_REG = 0x24
     };
 
     enum CLK_SRC
@@ -46,8 +29,12 @@ class ClvHdEMG
     };
 
     public:
-    ClvHdEMG(ClvHdMaster *master, int id) : m_master(master), m_id(id){};
-    ~ClvHdEMG();
+    EMG(Master *master, int id) : m_master(master), m_id(id)
+    {
+        m_fast_value = (int16_t *)(m_regs + DATA_CH1_PACE_REG);
+        m_precise_value = (int32_t *)(m_regs + DATA_CH1_ECG_REG);
+    };
+    ~EMG();
 
     void
     setup();
@@ -103,11 +90,43 @@ class ClvHdEMG
     void
     config_R3_ch3(uint8_t R3);
 
+    int32_t
+    read_precise_value(int ch);
+
+    int16_t
+    read_fast_value(int ch);
+
+    int32_t
+    precise_value(int ch)
+    {
+        return conv(m_precise_value[ch-1]);
+    };
+
+    int16_t
+    fast_value(int ch)
+    {
+        return conv(m_fast_value[ch-1]);
+    };
+
+    int16_t
+    conv(int16_t val)
+    {
+        return (val * 1. / 0x8000 - 0.5) * 4.8 / 3.5 * 1000;
+    }
+
+    int32_t
+    conv(int32_t val)
+    {
+        return (val * 1. / 0x800000 - 0.5) * 4.8 / 3.5 * 1000;
+    }
+
     private:
-    ClvHdMaster *m_master;
+    Master *m_master;
     int m_id;
     Mode m_mode;
     uint8_t m_regs[0x50];
+    int16_t *m_fast_value;
+    int32_t *m_precise_value;
 };
-
-#endif
+} // namespace ClvHd
+#endif //CLV_HD_EMG_H

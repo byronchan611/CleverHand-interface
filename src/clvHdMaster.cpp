@@ -1,6 +1,7 @@
 #include "clvHdMaster.hpp"
-
-ClvHdMaster::ClvHdMaster(const char *path)
+namespace ClvHd
+{
+Master::Master(const char *path)
 {
     std::cout << "> Check connection: " << std::flush;
     m_fd = open(path, O_RDWR | O_NOCTTY);
@@ -53,4 +54,54 @@ ClvHdMaster::ClvHdMaster(const char *path)
                   << std::endl;
         exit(-1);
     }
+}
+
+void
+Master::setup()
+{
+    //TODO: protocol to get the number of boards connected to the master
+    m_EMG.push_back(EMG(this, 15));
+}
+
+int32_t
+Master::read_precise_EMG(int id, int channel)
+{
+    return m_EMG[id].read_precise_value(channel);
+}
+
+int16_t
+Master::read_fast_EMG(int id, int channel)
+{
+    return m_EMG[id].read_fast_value(channel);
+}
+
+int32_t
+Master::precise_EMG(int id, int channel)
+{
+    return m_EMG[id].precise_value(channel);
+}
+
+int16_t
+Master::fast_EMG(int id, int channel)
+{
+    return m_EMG[id].fast_value(channel);
+}
+
+
+
+void
+Master::start_streaming(ADS1293_Reg reg, uint8_t size)
+{
+    uint8_t b[3] = {'s', (uint8_t)reg, size};
+    m_streaming_reg = reg;
+    m_streaming = true;
+    m_streaming_size = size;
+    this->writeS(b, 3);
+}
+
+void
+Master::read_stream()
+{
+  //this->readS(m_regs + m_streaming_reg, m_streaming_size);
+}
 }

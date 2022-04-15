@@ -31,7 +31,7 @@ cmake_minimum_required(VERSION 3.3)
 
 ###### PROJECT NAME AND VERSION ######
 set(EXEC_NAME CleverHand-interface)
-set(PROJECT_VERSION 1.7)
+set(PROJECT_VERSION 1.8)
 project(${EXEC_NAME} VERSION ${PROJECT_VERSION})
 
 ###### LIBRARY NAME ######

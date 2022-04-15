@@ -16,15 +16,21 @@
 #include <stdio.h>
 
 #include "clvHdEMG.hpp"
+#include "registers.hpp"
 
 #define GLOBAL_VERBOSE_LEVEL 0
 
-class ClvHdMaster
+namespace ClvHd
+{
+class EMG;
+class Master
 {
     public:
-    ClvHdMaster(const char *path);
-    ~ClvHdMaster()
+    Master(const char *path);
+    ~Master()
     {
+        uint8_t b[1] = {'n'};
+        this->writeS(b, 1);
         close(m_fd);
     };
 
@@ -43,9 +49,9 @@ class ClvHdMaster
     {
         size_t size = sizeof(T);
         char msg[3] = {'r', (char)reg, (char)size};
-        writeS( msg, 3);
+        writeS(msg, 3);
         m_vbuff = 0;
-        readS( (uint8_t *)&m_vbuff, size);
+        readS((uint8_t *)&m_vbuff, size);
         return *(T *)&m_vbuff;
     }
 
@@ -54,8 +60,8 @@ class ClvHdMaster
     readReg(uint8_t id, uint8_t reg, size_t size)
     {
         char msg[3] = {'r', (char)reg, (char)size};
-        writeS( msg, 3);
-        readS( (uint8_t *)&m_vbuff, size);
+        writeS(msg, 3);
+        readS((uint8_t *)&m_vbuff, size);
         return *(T *)&m_vbuff;
     }
 
@@ -70,7 +76,7 @@ class ClvHdMaster
     T
     readSerial(size_t size)
     {
-      readS( (uint8_t *)&m_vbuff, size);
+        readS((uint8_t *)&m_vbuff, size);
         // std::cout << std::hex << n << " " << (int)(((uint8_t *)&m_vbuff)[0])
         //           << " " << (int)(((uint8_t *)&m_vbuff)[1]) << std::endl;
         return *(T *)&m_vbuff;
@@ -89,13 +95,34 @@ class ClvHdMaster
     }
 
     void
-    setup()
-    {
-    }
+    setup();
+
+    int16_t
+    read_fast_EMG(int id, int channel);
+
+    int32_t
+    read_precise_EMG(int id, int channel);
+
+    int16_t
+    fast_EMG(int id, int channel);
+
+    int32_t
+    precise_EMG(int id, int channel);
+
+    void
+    start_streaming(ADS1293_Reg reg, uint8_t size);
+
+    void
+    read_stream();
 
     private:
     int m_fd;
+    std::vector<EMG> m_EMG;
     uint64_t m_vbuff;
-};
 
+    bool m_streaming = false;
+    ADS1293_Reg m_streaming_reg;
+    size_t m_streaming_size;
+};
+} // namespace ClvHd
 #endif

@@ -1,0 +1,33 @@
+#ifndef REGISTERS_HPP
+#define REGISTERS_HPP
+
+namespace ClvHd
+{
+enum ADS1293_Reg
+{
+    CONFIG_REG = 0x00,
+    FLEX_CH1_CN_REG = 0x01,
+    FLEX_CH2_CN_REG = 0x02,
+    FLEX_CH3_CN_REG = 0x03,
+    FLEX_PACE_CN_REG = 0x04,
+    FLEX_VBAT_CN_REG = 0x05,
+    OSC_CN_REG = 0x12,
+    AFE_RES_REG = 0x13,
+    AFE_SHDN_CN_REG = 0x14,
+    AFE_PACE_CN_REG = 0x17,
+    ERROR_STATUS_REG = 0x19,
+    DATA_STATUS_REG = 0x30,
+    R1_RATE_REG = 0x25,
+    R2_RATE_REG = 0x21,
+    R3_RATE_CH1_REG = 0x22,
+    R3_RATE_CH2_REG = 0x23,
+    R3_RATE_CH3_REG = 0x24,
+    DATA_CH1_PACE_REG = 0x31,
+    DATA_CH2_PACE_REG = 0x33,
+    DATA_CH3_PACE_REG = 0x35,
+    DATA_CH1_ECG_REG = 0x37,
+    DATA_CH2_ECG_REG = 0x3a,
+    DATA_CH3_ECG_REG = 0x3d
+};
+}
+#endif // REGISTERS_HPP

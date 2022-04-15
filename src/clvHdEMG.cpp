@@ -1,9 +1,12 @@
 #include "clvHdEMG.hpp"
 
-ClvHdEMG::~ClvHdEMG() { m_master->writeReg(m_id, CONFIG_REG, 0x02); }
+namespace ClvHd
+{
+  
+EMG::~EMG() { m_master->writeReg(m_id, CONFIG_REG, 0x02); }
 
 void
-ClvHdEMG::setup()
+EMG::setup()
 {
     uint8_t val = 0;
     std::cout << "> Checking ADS1293: " << std::flush;
@@ -39,13 +42,13 @@ ClvHdEMG::setup()
 
     //R3_ch1 = 4 (0x01)
     this->config_R3_ch1(4);
-    
+
     // check DIS_EFILTER: 0x26
 
     //Start conversion (0x01)
     this->set_mode(START_CONV);
-    std::cout << "OK" << std::endl;
 
+    std::cout << "OK" << std::endl;
     std::cout << "> Reading errors registers: " << std::flush;
 
     val = m_master->readReg<uint8_t>(m_id, 0x19);
@@ -57,7 +60,7 @@ ClvHdEMG::setup()
 }
 
 void
-ClvHdEMG::route_channel(uint8_t channel, uint8_t pos_in, uint8_t neg_in)
+EMG::route_channel(uint8_t channel, uint8_t pos_in, uint8_t neg_in)
 {
     pos_in = (pos_in < 0) ? 0 : (pos_in > 6) ? 6 : pos_in;
     neg_in = (neg_in < 0) ? 0 : (neg_in > 6) ? 6 : neg_in;
@@ -69,7 +72,7 @@ ClvHdEMG::route_channel(uint8_t channel, uint8_t pos_in, uint8_t neg_in)
 }
 
 void
-ClvHdEMG::set_mode(Mode mode)
+EMG::set_mode(Mode mode)
 {
     m_mode = mode;
     m_regs[CONFIG_REG] = mode;
@@ -77,7 +80,7 @@ ClvHdEMG::set_mode(Mode mode)
 }
 
 void
-ClvHdEMG::config_clock(bool start, CLK_SRC src, bool en_output)
+EMG::config_clock(bool start, CLK_SRC src, bool en_output)
 {
     uint8_t val = (start ? 0x4 : 0x0) | (src << 1) | (en_output ? 0x1 : 0x0);
     m_regs[OSC_CN_REG] = val;
@@ -85,7 +88,7 @@ ClvHdEMG::config_clock(bool start, CLK_SRC src, bool en_output)
 }
 
 void
-ClvHdEMG::enable_channels(bool ch1, bool ch2, bool ch3)
+EMG::enable_channels(bool ch1, bool ch2, bool ch3)
 {
     uint8_t val =
         (ch1 ? 0 : 0b001001) | (ch2 ? 0 : 0b010010) | (ch3 ? 0 : 0x0b100100);
@@ -94,7 +97,7 @@ ClvHdEMG::enable_channels(bool ch1, bool ch2, bool ch3)
 }
 
 void
-ClvHdEMG::enable_SDM(bool ch1, bool ch2, bool ch3)
+EMG::enable_SDM(bool ch1, bool ch2, bool ch3)
 {
     uint8_t val = (m_regs[AFE_SHDN_CN_REG] & 0b111) | (ch1 ? 0 : 0b1000) |
                   (ch2 ? 0 : 0b10000) | (ch3 ? 0 : 0b100000);
@@ -103,7 +106,7 @@ ClvHdEMG::enable_SDM(bool ch1, bool ch2, bool ch3)
 }
 
 void
-ClvHdEMG::enable_INA(bool ch1, bool ch2, bool ch3)
+EMG::enable_INA(bool ch1, bool ch2, bool ch3)
 {
     uint8_t val = (m_regs[AFE_SHDN_CN_REG] & 0b111000) | (ch1 ? 0 : 0b1) |
                   (ch2 ? 0 : 0b10) | (ch3 ? 0 : 0b100);
@@ -112,7 +115,7 @@ ClvHdEMG::enable_INA(bool ch1, bool ch2, bool ch3)
 }
 
 void
-ClvHdEMG::config_resolution(bool ch1_high_res,
+EMG::config_resolution(bool ch1_high_res,
                             bool ch2_high_res,
                             bool ch3_high_res)
 {
@@ -124,7 +127,7 @@ ClvHdEMG::config_resolution(bool ch1_high_res,
 }
 
 void
-ClvHdEMG::config_frequence(bool ch1_freq_double,
+EMG::config_frequence(bool ch1_freq_double,
                            bool ch2_freq_double,
                            bool ch3_freq_double)
 {
@@ -136,7 +139,7 @@ ClvHdEMG::config_frequence(bool ch1_freq_double,
 }
 
 void
-ClvHdEMG::config_R1(uint8_t R1_ch1, uint8_t R1_ch2, uint8_t R1_ch3)
+EMG::config_R1(uint8_t R1_ch1, uint8_t R1_ch2, uint8_t R1_ch3)
 {
     R1_ch1 = (R1_ch1 < 3) ? 0b001 : 0; //2 or 4
     R1_ch2 = (R1_ch2 < 3) ? 0b010 : 0; //2 or 4
@@ -147,7 +150,7 @@ ClvHdEMG::config_R1(uint8_t R1_ch1, uint8_t R1_ch2, uint8_t R1_ch3)
 }
 
 void
-ClvHdEMG::config_R2(uint8_t R2)
+EMG::config_R2(uint8_t R2)
 {
     if(R2 < 5)
         R2 = 0b0001; //4
@@ -162,7 +165,7 @@ ClvHdEMG::config_R2(uint8_t R2)
 }
 
 void
-ClvHdEMG::config_R3_ch1(uint8_t R3)
+EMG::config_R3_ch1(uint8_t R3)
 {
     if(R3 < 6)
         R3 = 0b00000001; //4
@@ -185,7 +188,7 @@ ClvHdEMG::config_R3_ch1(uint8_t R3)
 }
 
 void
-ClvHdEMG::config_R3_ch2(uint8_t R3)
+EMG::config_R3_ch2(uint8_t R3)
 {
     if(R3 < 6)
         R3 = 0b00000001; //4
@@ -208,7 +211,7 @@ ClvHdEMG::config_R3_ch2(uint8_t R3)
 }
 
 void
-ClvHdEMG::config_R3_ch3(uint8_t R3)
+EMG::config_R3_ch3(uint8_t R3)
 {
     if(R3 < 6)
         R3 = 0b00000001; //4
@@ -228,4 +231,19 @@ ClvHdEMG::config_R3_ch3(uint8_t R3)
         R3 = 0b10000000; //128
     m_regs[R3_RATE_CH3_REG] = R3;
     m_master->writeReg(m_id, R3_RATE_CH3_REG, R3);
+}
+
+int16_t
+EMG::read_fast_value(int ch)
+{
+  m_fast_value[ch-1] = m_master->readReg<int16_t>(m_id, DATA_CH1_PACE_REG + 2 * (ch - 1));
+  return conv(m_fast_value[ch-1]);
+}
+
+int32_t
+EMG::read_precise_value(int ch)
+{
+  m_precise_value[ch-1] =m_master->readReg<int32_t>(m_id, DATA_CH1_ECG_REG + 2 * (ch - 1), 3); 
+  return conv(m_precise_value[ch-1]);
+}
 }

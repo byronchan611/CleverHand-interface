@@ -16,6 +16,7 @@
 #include <stdio.h>
 
 #include "clvHdEMG.hpp"
+#include "com_client.hpp"
 #include "registers.hpp"
 
 #define GLOBAL_VERBOSE_LEVEL 0
@@ -23,103 +24,45 @@
 namespace ClvHd
 {
 class EMG;
-class Master
+class Master : public Communication::Client
 {
     public:
-    Master(const char *path);
-    ~Master()
-    {
-        uint8_t b[1] = {'n'};
-        this->writeS(b, 1);
-        close(m_fd);
-    };
+    Master(){};
+    ~Master();
 
     void
-    printBit(int8_t val)
-    {
-        std::cout << " " << std::flush;
-        for(int i = 0; i < 8; i++)
-            if(1 & (val >> i))
-                std::cout << "[" + std::to_string(i) + "] " << std::flush;
-    }
-
-    template <typename T>
-    T
-    readReg(uint8_t id, uint8_t reg)
-    {
-        size_t size = sizeof(T);
-        char msg[3] = {'r', (char)reg, (char)size};
-        writeS(msg, 3);
-        m_vbuff = 0;
-        readS((uint8_t *)&m_vbuff, size);
-        return *(T *)&m_vbuff;
-    }
-
-    template <typename T>
-    T
-    readReg(uint8_t id, uint8_t reg, size_t size)
-    {
-        char msg[3] = {'r', (char)reg, (char)size};
-        writeS(msg, 3);
-        readS((uint8_t *)&m_vbuff, size);
-        return *(T *)&m_vbuff;
-    }
+    printBit(int8_t val);
 
     int
-    writeReg(uint8_t id, uint8_t reg, char val)
-    {
-        char msg[3] = {'w', (char)reg, (char)val};
-        return writeS(msg, 3);
-    }
-
-    template <typename T>
-    T
-    readSerial(size_t size)
-    {
-        readS((uint8_t *)&m_vbuff, size);
-        // std::cout << std::hex << n << " " << (int)(((uint8_t *)&m_vbuff)[0])
-        //           << " " << (int)(((uint8_t *)&m_vbuff)[1]) << std::endl;
-        return *(T *)&m_vbuff;
-    }
+    readReg(uint8_t id, uint8_t reg, size_t size, const void *buff);
 
     int
-    readS(uint8_t *buffer, size_t size)
-    {
-        return read(m_fd, buffer, size);
-    };
-
-    int
-    writeS(const void *arr, size_t size)
-    {
-        return write(m_fd, arr, size);
-    }
+    writeReg(uint8_t id, uint8_t reg, char val);
 
     void
     setup();
 
-    int16_t
+    double
     read_fast_EMG(int id, int channel);
 
-    int32_t
+    double
     read_precise_EMG(int id, int channel);
 
-    int16_t
+    double
     fast_EMG(int id, int channel);
 
-    int32_t
+    double
     precise_EMG(int id, int channel);
 
     void
     start_streaming(ADS1293_Reg reg, uint8_t size);
 
-    void
+    int
     read_stream();
 
-    private:
-    int m_fd;
-    std::vector<EMG> m_EMG;
-    uint64_t m_vbuff;
+    std::vector<EMG *> m_EMG;
 
+    private:
     bool m_streaming = false;
     ADS1293_Reg m_streaming_reg;
     size_t m_streaming_size;

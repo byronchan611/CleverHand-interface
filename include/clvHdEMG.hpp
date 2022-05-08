@@ -15,6 +15,18 @@ class Master;
 
 class EMG
 {
+    typedef struct
+    {
+        uint8_t error_lod;
+        uint8_t error_status;
+        uint8_t error_range1;
+        uint8_t error_range2;
+        uint8_t error_range3;
+        uint8_t error_sync;
+        uint8_t error_misc;
+        uint8_t padding;
+    } Error;
+
     enum Mode
     {
         START_CONV = 0x1,
@@ -24,16 +36,12 @@ class EMG
 
     enum CLK_SRC
     {
-        EXTERN = 0,
-        INTERN = 1
+        EXTERN = 1,
+        INTERN = 0
     };
 
     public:
-    EMG(Master *master, int id) : m_master(master), m_id(id)
-    {
-        m_fast_value = (int16_t *)(m_regs + DATA_CH1_PACE_REG);
-        m_precise_value = (int32_t *)(m_regs + DATA_CH1_ECG_REG);
-    };
+    EMG(Master *master, int id);
     ~EMG();
 
     void
@@ -42,7 +50,7 @@ class EMG
     void
     route_channel(uint8_t channel, uint8_t pos_in, uint8_t neg_in);
 
-    void
+    int
     set_mode(Mode mode);
     Mode
     get_mode()
@@ -80,45 +88,40 @@ class EMG
 
     //4, 6, 8, 12, 16, 32, 64, 128
     void
-    config_R3_ch1(uint8_t R3);
+    config_R3(int ch, uint8_t R3);
 
-    //4, 6, 8, 12, 16, 32, 64, 128
-    void
-    config_R3_ch2(uint8_t R3);
-
-    //4, 6, 8, 12, 16, 32, 64, 128
-    void
-    config_R3_ch3(uint8_t R3);
-
-    int32_t
+    double
     read_precise_value(int ch);
 
-    int16_t
+    double
     read_fast_value(int ch);
 
-    int32_t
-    precise_value(int ch)
+    double
+    precise_value(int ch);
+
+    double
+    fast_value(int ch);
+
+    double
+    conv(uint16_t val);
+
+    double
+    conv(int ch, int32_t val);
+
+    Error *
+    get_error();
+
+    std::string
+    error_range_str(uint8_t err_byte);
+
+    std::string
+    error_status_str(uint8_t err_byte);
+
+    uint8_t *
+    get_regs()
     {
-        return conv(m_precise_value[ch-1]);
+        return m_regs;
     };
-
-    int16_t
-    fast_value(int ch)
-    {
-        return conv(m_fast_value[ch-1]);
-    };
-
-    int16_t
-    conv(int16_t val)
-    {
-        return (val * 1. / 0x8000 - 0.5) * 4.8 / 3.5 * 1000;
-    }
-
-    int32_t
-    conv(int32_t val)
-    {
-        return (val * 1. / 0x800000 - 0.5) * 4.8 / 3.5 * 1000;
-    }
 
     private:
     Master *m_master;
@@ -126,7 +129,10 @@ class EMG
     Mode m_mode;
     uint8_t m_regs[0x50];
     int16_t *m_fast_value;
-    int32_t *m_precise_value;
+    int32_t *m_precise_value[3];
+    int32_t m_fast_adc_max;
+    int32_t m_precise_adc_max[3];
+    bool m_verbose = true;
 };
 } // namespace ClvHd
 #endif //CLV_HD_EMG_H

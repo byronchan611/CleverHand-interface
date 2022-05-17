@@ -40,7 +40,7 @@ Master::setup()
 
     uint8_t nb_emg=0;
     this->readS(&nb_emg,1);
-    std::cout << nb_emg << " EMG electrodes." << std::endl;
+    std::cout << (int)nb_emg << " EMG electrodes." << std::endl;
     for(int i = 0; i < nb_emg; i++)
     {
         m_EMG.push_back(new EMG(this, 0x0f - i));

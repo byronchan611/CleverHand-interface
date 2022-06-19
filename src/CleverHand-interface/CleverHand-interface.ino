@@ -11,19 +11,17 @@ const byte REG_MASK = 0b01111111;
 
 const int addPins[4] = {7, 8, 9, 10};
 const int gpio1Pin = 6;
+const int resetPin = 14;
 char c;
 byte id;
 byte reg;
 byte n;
+byte n_board;
 byte val = 0x00;
 byte vals[255] = {0x00, 0x00, 0x00, 0x00};
 uint8_t boardId = 15;
 
-byte s_reg;
-byte s_n;
-bool streaming = false;
-uint16_t s_board = 0;
-
+void(* resetFunc) (void) = 0;  // declare reset fuction at address 0
 
 void selectBrd(uint8_t id)
 {
@@ -53,7 +51,7 @@ void readRegister_(byte reg, byte val[], unsigned n = 1, uint8_t id = 15)
 
   selectBrd(id);
   SPI.transfer(dataToSend);
-  for (int i = 0; i <n; i++)
+  for (int i = 0; i < n; i++)
   {
     *(val + i) = 0;
     *(val + i) = SPI.transfer(0x00);
@@ -100,24 +98,22 @@ void setup()
   for (int i = 0; i < 4; i++)
     pinMode(addPins[i], OUTPUT);
   pinMode(gpio1Pin, OUTPUT);
+  pinMode(resetPin, OUTPUT);
   digitalWrite(gpio1Pin, HIGH);
+  digitalWrite(resetPin, HIGH);
 
 
   delay(1000);
 
   clean_start();
 
-  int n = nb_emg_connected();
+  n_board = nb_emg_connected();
 
-  Serial.write(n);
-  for(int j=15; j>15-n; j--)
-  {
-    for (int i = 0; i < 5; i++)
-    {
-      selectBrd(j*(i % 2));
-      delay(30);
-    }
-  }
+  Serial.write(n_board);
+  for (int j = 15; j > 15 - n_board; j--)
+    for (int i = 0; i < 5; i++, delay(30))
+      selectBrd(j * (i % 2));
+
 
 }
 
@@ -126,7 +122,7 @@ void loop()
   if (Serial.available() > 0)
   {
     c = Serial.read();
-    
+
     if (c == 'r')
     {
       id = Serial.read();
@@ -143,34 +139,19 @@ void loop()
       val = Serial.read();
       writeRegister(reg, val, id);
     }
-    if (c == 's')//stream
+    if (c == 'z')
     {
-      streaming = true;
-      s_reg = Serial.read();
-      s_n = Serial.read();
-    }
-    if (c == 'n')// stop stream
-    {
-      streaming = false;
+      for (int j = 16 - n_board; j < 16; j++)
+      {
+        writeRegister(0x00, 2, id);
+        readRegister_(0x19, vals, 1, j);
+      }
+      for (int j = 16 - n_board; j < 16; j++)
+        for (int i = 0; i < 5; i++, delay(30))
+          selectBrd(j * (i % 2));
+      setup();
     }
 
   }
-  if (streaming == true)
-  {
-    readRegister(0x30, vals, 1);
-    if (vals[0] & 0b00100000)
-    {
-      readRegister_(s_reg, vals, s_n);
-//      vals[0]=vvv;
-//      vals[1]=0x00;
-//      vals[6]=0x12;
-//      vals[7]=0x34;
-//      vals[8]=0x56;
-      Serial.write(vals, s_n);
-    }
-    //byte vv[4] = {0xa4, 0xb6, 0x00, 0x00};
-    //Serial.write(vv, 2);
-  }
 
-  //delay(10);
 }

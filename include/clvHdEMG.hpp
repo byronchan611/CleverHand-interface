@@ -9,6 +9,7 @@
 
 #include "clvHdMaster.hpp"
 #include "registers.hpp"
+#include "strANSIseq.hpp"
 
 namespace ClvHd
 {
@@ -16,6 +17,7 @@ class Master;
 
 class EMG
 {
+    protected:
     typedef struct
     {
         uint8_t error_lod;
@@ -28,17 +30,18 @@ class EMG
         uint8_t padding;
     } Error;
 
+    enum CLK_SRC
+    {
+        EXTERN = 1,
+        INTERN = 0
+    };
+
+    public:
     enum Mode
     {
         START_CONV = 0x1,
         STANDBY = 0x2,
         POWER_DOWN = 0x4
-    };
-
-    enum CLK_SRC
-    {
-        EXTERN = 1,
-        INTERN = 0
     };
 
     public:
@@ -47,12 +50,12 @@ class EMG
 
     void
     setup(int route_table[3][2],
-	   bool chx_enable[3],
-	   bool chx_high_res[3],
-	   bool chx_high_freq[3],
-	   int R1[3],
-	   int R2,
-	   int R3[3]);
+          bool chx_enable[3],
+          bool chx_high_res[3],
+          bool chx_high_freq[3],
+          int R1[3],
+          int R2,
+          int R3[3]);
 
     void
     route_channel(uint8_t channel, uint8_t pos_in, uint8_t neg_in);
@@ -119,10 +122,10 @@ class EMG
     get_error();
 
     std::string
-    error_range_str(uint8_t err_byte);
+    error_range_str();
 
     std::string
-    error_status_str(uint8_t err_byte);
+    error_status_str();
 
     uint8_t *
     get_regs()

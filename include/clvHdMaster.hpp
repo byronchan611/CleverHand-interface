@@ -23,10 +23,10 @@
 
 namespace ClvHd
 {
-  class EMG;
-  class Master : public Communication::Client
-  {
-  public:
+class EMG;
+class Master : public Communication::Client
+{
+    public:
     Master(){};
     ~Master();
 
@@ -39,7 +39,7 @@ namespace ClvHd
     int
     writeReg(uint8_t id, uint8_t reg, char val);
 
-    int 
+    int
     setup();
 
     void
@@ -51,6 +51,9 @@ namespace ClvHd
              int R1[3],
              int R2,
              int R3[3]);
+
+    bool
+    data_ready(int id, int channel, bool precise = false);
 
     double
     read_fast_EMG(int id, int channel);
@@ -65,23 +68,24 @@ namespace ClvHd
     precise_EMG(int id, int channel);
 
     void
-    start_streaming(ADS1293_Reg reg, uint8_t size);
+    start_acquisition();
 
     void
-    start_streaming(std::vector<std::pair<int,uint8_t>> active_channels);
-  
+    stop_acquisition();
+
     int
-    read_stream();
+    read_all_signal();
 
-    void stop_streaming();
-
+    std::string
+    get_error(int id, bool verbose=false);
+  
     std::vector<EMG *> m_EMG;
 
-  private:
+    private:
     bool m_streaming = false;
     ADS1293_Reg m_streaming_reg;
     size_t m_streaming_size;
-    std::vector<std::pair<int,uint8_t>> m_streaming_channels;
-  };
+    std::vector<std::pair<int, uint8_t>> m_streaming_channels;
+};
 } // namespace ClvHd
 #endif

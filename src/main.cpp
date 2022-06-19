@@ -19,11 +19,9 @@ main()
         lsl::stream_outlet outlet_sample(info_sample);
         std::vector<float> sample(nb_ch);
         std::cout << "[INFOS] Now sending data... " << std::endl;
-        master.start_streaming(ClvHd::DATA_CH1_PACE_REG, 12);
-        //double max = master.m_EMG[0]->conv(0);
         for(int t = 0;; t++)
         {
-            master.read_stream();
+            master.read_all_signal();
             //   int val = master.readReg<uint8_t>(15, 0x40);
             // std::cout << "[INFOS]  " << val << " " ;
             sample[0] = master.fast_EMG(0, 1);

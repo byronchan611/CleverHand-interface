@@ -4,8 +4,9 @@ namespace ClvHd
 
 Master::~Master()
 {
-    uint8_t b[1] = {'n'};
+    uint8_t b[1] = {'z'};
     this->writeS(b, 1);
+    this->close_connection();
 };
 
 void
@@ -20,7 +21,7 @@ Master::printBit(int8_t val)
 int
 Master::readReg(uint8_t id, uint8_t reg, size_t size, const void *buff)
 {
-    char msg[4] = {'r', (char)id, (char)reg, (char)size};
+    char msg[4] = {'r', (char)(0x0f - id), (char)reg, (char)size};
     writeS(msg, 4);
     return readS((uint8_t *)buff, size);
 };
@@ -28,7 +29,7 @@ Master::readReg(uint8_t id, uint8_t reg, size_t size, const void *buff)
 int
 Master::writeReg(uint8_t id, uint8_t reg, char val)
 {
-    char msg[4] = {'w', (char)id, (char)reg, (char)val};
+    char msg[4] = {'w', (char)(0x0f - id), (char)reg, (char)val};
     return writeS(msg, 4);
 };
 
@@ -52,9 +53,15 @@ Master::setup()
     Communication::Client::clean_start();
     uint8_t nb_emg = 0;
     this->readS(&nb_emg, 1);
-    std::cout << "hey " << (int)nb_emg << std::endl;
-    for(int i = 0; i < nb_emg; i++) m_EMG.push_back(new EMG(this, 0x0f - i));
+    for(int i = 0; i < nb_emg; i++) m_EMG.push_back(new EMG(this, i));
     return nb_emg;
+}
+
+bool
+Master::data_ready(int id, int channel, bool precise)
+{
+    uint8_t mask = 1 << (2 + precise * 3 + channel);
+    return *(m_EMG[id]->get_regs() + DATA_STATUS_REG) & mask;
 }
 
 double
@@ -82,54 +89,37 @@ Master::fast_EMG(int id, int channel)
 }
 
 void
-Master::start_streaming(ADS1293_Reg reg, uint8_t size)
+Master::start_acquisition()
 {
-    uint8_t b[3] = {'s', (uint8_t)reg, size};
-    m_streaming_reg = reg;
-    m_streaming = true;
-    m_streaming_size = size;
-    this->writeS(b, 3);
+    for(int i = 0; i < m_EMG.size(); i++) m_EMG[i]->set_mode(EMG::START_CONV);
 }
 
 void
-Master::start_streaming(std::vector<std::pair<int, uint8_t>> active_channels)
+Master::stop_acquisition()
 {
-    uint8_t *b = new uint8_t[active_channels.size() * 2 + 2];
-    b[0] = 'S';
-    b[1] = (uint8_t)active_channels.size();
-
-    m_streaming_channels.clear();
-
-    for(int i = 0; i < active_channels.size(); i++)
-    {
-        b[2 + i * 2] = active_channels[i].first;
-        b[2 + i * 2 + 1] = active_channels[i].second;
-        m_streaming_channels.push_back(std::make_pair(
-            active_channels[i].first, active_channels[i].second));
-    }
-    this->writeS(b, active_channels.size() * 2 + 2);
-    delete[] b;
+    for(int i = 0; i < m_EMG.size(); i++) m_EMG[i]->set_mode(EMG::STANDBY);
 }
 
 int
-Master::read_stream()
+Master::read_all_signal()
 {
-
-    for(int i = 0; i < m_streaming_channels.size(); i++)
-    {
-        this->readS(m_EMG[m_streaming_channels[i].first]->get_regs() +
-                        m_streaming_channels[i].second,
-                    (m_streaming_channels[i].second < DATA_CH1_ECG_REG) ? 2
-                                                                        : 3);
-    }
-    return 1;
+    int v = 1;
+    for(int i = 0; i < m_EMG.size(); i++)
+        v *= this->readReg(i, DATA_STATUS_REG, 16,
+                           m_EMG[i]->get_regs() + DATA_STATUS_REG);
+    return v;
 }
 
-void
-Master::stop_streaming()
+std::string
+Master::get_error(int id, bool verbose)
 {
-    uint8_t b[3] = {'n'};
-    this->writeS(b, 1);
-};
+  std::string str;
+  m_EMG[id]->get_error();
+  str += m_EMG[id]->error_status_str();
+  if(verbose)
+    str += m_EMG[id]->error_range_str();
+
+  return str;
+}
 
 } // namespace ClvHd

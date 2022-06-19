@@ -37,28 +37,22 @@ EMG::EMG(Master *master, int id) : m_master(master), m_id(id)
 EMG::~EMG() { m_master->writeReg(m_id, CONFIG_REG, 0x02); }
 
 void
-EMG::setup()
+EMG::setup(int route_table[3][2],
+	   bool chx_enable[3],
+	   bool chx_high_res[3],
+	   bool chx_high_freq[3],
+	   int R1[3],
+	   int R2,
+	   int R3[3])
 {
-    uint8_t val = 0;
-    m_master->readReg(m_id, 0x40, 1, &val);
-    LOG("> version %d\n", val);
-
-    CLK_SRC clk_src = INTERN; //Start clk and output on CLK pin (0x05);
-    //route channel1 (+)in1 & (-)in6 (0x31)
-    int route_table[3][2] = {{1, 6}, {0, 0}, {0, 0}};
-    //enable ch1 and disaable ch2 and ch3 (0x36)
-    bool chx_enable[3] = {true, false, false};
-    //no high resolution & Clock frequency for Channel 1 :204800 (0x08)
-    bool chx_high_res[3] = {true, false, false};
-    bool chx_high_freq[3] = {true, false, false};
-    int R1[3] = {2, 4, 4}; //R1 ch1:2 ch2:4 ch3:4 (0x1)
-    int R2 = 2;            //R2 = 4 (0x01)
-    int R3[3] = {2, 2, 2}; //R3_ch1 = 4 (0x01)
+    CLK_SRC clk_src = (m_id==0x0f)?INTERN:EXTERN; //Start clk and output on CLK pin (0x05);
 
     // standby mode (0x02)
     this->set_mode(STANDBY);
     this->config_clock(true, clk_src, true);
     this->route_channel(1, route_table[0][0], route_table[0][1]);
+    this->route_channel(2, route_table[1][0], route_table[1][1]);
+    this->route_channel(3, route_table[2][0], route_table[2][1]);
     this->enable_channels(chx_enable[0], chx_enable[1], chx_enable[2]);
     this->config_resolution(chx_high_res[0], chx_high_res[1], chx_high_res[2]);
     this->config_frequence(chx_high_freq[0], chx_high_freq[1],
@@ -70,46 +64,42 @@ EMG::setup()
     // m_master->writeReg(m_id, FLEX_CH1_CN_REG, 0b01000000);
     //m_master->writeReg(m_id, FLEX_VBAT_CN_REG, 0b1);
 
-    val = m_master->readReg(m_id, R1_RATE_REG, 1, &val);
-    LOG("> version %d\n", val);
-
-    LOG("> Seting up ADS1293 (%d):\n", m_id);
-    LOG("> Set clock on CLK %s pin\n",
+    LOG("Seting up ADS1293 (%d):\n", m_id);
+    LOG("\t> Set clock on CLK %s pin\n",
         (clk_src == INTERN) ? "intern" : "extern");
-    LOG("> route ch1:(-)%d (+)%d\n", route_table[0][0], route_table[0][1]);
-    LOG("> Ch1(%sabled) Ch2(%sabled) Ch3(%sabled)\n",
+    LOG("\t> route ch1:(-)%d (+)%d\n", route_table[0][0], route_table[0][1]);
+    LOG("\t> route ch2:(-)%d (+)%d\n", route_table[1][0], route_table[1][1]);
+    LOG("\t> route ch3:(-)%d (+)%d\n", route_table[2][0], route_table[2][1]);
+    LOG("\t> Ch1(%sabled) Ch2(%sabled) Ch3(%sabled)\n",
         chx_enable[0] ? "en" : "dis", chx_enable[1] ? "en" : "dis",
         chx_enable[2] ? "en" : "dis");
-    LOG("> Resolution Ch1(%s) Ch2(%s) Ch3(%s)\n",
+    LOG("\t> Resolution Ch1(%s) Ch2(%s) Ch3(%s)\n",
         chx_high_res[0] ? "high" : "low", chx_high_res[1] ? "high" : "low",
         chx_high_res[2] ? "high" : "low");
-    LOG("> Precision Ch1(%s) Ch2(%s) Ch3(%s)\n",
+    LOG("\t> Precision Ch1(%s) Ch2(%s) Ch3(%s)\n",
         chx_high_freq[0] ? "high" : "low", chx_high_freq[1] ? "high" : "low",
         chx_high_freq[2] ? "high" : "low");
-    LOG("> R1 Ch1(%d) Ch2(%d) Ch3(%d)\n", R1[0], R1[1], R1[2]);
-    LOG("> R2 %d\n", R2);
-    LOG("> R3 Ch1(%d) Ch2(%d) Ch3(%d)\n", R3[0], R3[1], R3[2]);
+    LOG("\t> R1 Ch1(%d) Ch2(%d) Ch3(%d)\n", R1[0], R1[1], R1[2]);
+    LOG("\t> R2 %d\n", R2);
+    LOG("\t> R3 Ch1(%d) Ch2(%d) Ch3(%d)\n", R3[0], R3[1], R3[2]);
 
     // check DIS_EFILTER: 0x26
 
-    //Start conversion (0x01)
-    this->set_mode(START_CONV);
-
-    LOG("> Start conversion\n");
     LOG("> Reading errors registers:\n");
 
     this->get_error();
     this->error_status_str(m_regs[ERROR_STATUS_REG]);
-    LOG("> %s\n", this->error_status_str(m_regs[ERROR_STATUS_REG]).c_str());
-    LOG("> %s\n", this->error_range_str(m_regs[ERROR_RANGE1_REG]).c_str());
-    LOG("> %d\n", m_regs[ERROR_STATUS_REG]);
-    LOG("> %d\n", m_regs[ERROR_RANGE1_REG]);
+    // uint8_t val = 0;
+    // LOG("> %s\n", this->error_status_str(m_regs[ERROR_STATUS_REG]).c_str());
+    // LOG("> %s\n", this->error_range_str(m_regs[ERROR_RANGE1_REG]).c_str());
+    // LOG("> %d\n", m_regs[ERROR_STATUS_REG]);
+    // LOG("> %d\n", m_regs[ERROR_RANGE1_REG]);
 
-    val = m_master->readReg(m_id, 0x19, 1, &val);
-    LOG("> %d\n", val);
-    //m_master->printBit(val);
-    val = m_master->readReg(m_id, 0x1a, 1, &val);
-    LOG("> %d\n", val);
+    // val = m_master->readReg(m_id, 0x19, 1, &val);
+    // LOG("> %d\n", val);
+    // //m_master->printBit(val);
+    // val = m_master->readReg(m_id, 0x1a, 1, &val);
+    // LOG("> %d\n", val);
     //m_master->printBit(val);
 }
 

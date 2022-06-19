@@ -9,6 +9,7 @@
 
 #include "clvHdMaster.hpp"
 #include "registers.hpp"
+
 namespace ClvHd
 {
 class Master;
@@ -45,7 +46,13 @@ class EMG
     ~EMG();
 
     void
-    setup();
+    setup(int route_table[3][2],
+	   bool chx_enable[3],
+	   bool chx_high_res[3],
+	   bool chx_high_freq[3],
+	   int R1[3],
+	   int R2,
+	   int R3[3]);
 
     void
     route_channel(uint8_t channel, uint8_t pos_in, uint8_t neg_in);

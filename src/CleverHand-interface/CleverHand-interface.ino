@@ -44,7 +44,7 @@ void readRegister(byte reg, byte val[], unsigned n = 1, uint8_t id = 15)
     *(val + i) = 0;
     *(val + i) = SPI.transfer(0x00);
   }
-  selectBrd(14);
+  selectBrd(0);
 }
 
 void readRegister_(byte reg, byte val[], unsigned n = 1, uint8_t id = 15)
@@ -58,7 +58,7 @@ void readRegister_(byte reg, byte val[], unsigned n = 1, uint8_t id = 15)
     *(val + i) = 0;
     *(val + i) = SPI.transfer(0x00);
   }
-  selectBrd(14);
+  selectBrd(0);
 }
 
 void writeRegister(byte reg, byte val, uint8_t id = 15)
@@ -67,7 +67,7 @@ void writeRegister(byte reg, byte val, uint8_t id = 15)
   selectBrd(id);
   SPI.transfer(dataToSend);
   SPI.transfer(val);
-  selectBrd(14);
+  selectBrd(0);
 }
 
 void clean_start()
@@ -110,10 +110,13 @@ void setup()
   int n = nb_emg_connected();
 
   Serial.write(n);
-  for (int i = 0; i < 6; i++)
+  for(int j=15; j>15-n; j--)
   {
-    selectBrd(14 + i % 2);
-    delay(100);
+    for (int i = 0; i < 5; i++)
+    {
+      selectBrd(j*(i % 2));
+      delay(30);
+    }
   }
 
 }

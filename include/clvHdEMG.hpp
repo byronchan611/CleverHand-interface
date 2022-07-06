@@ -10,11 +10,17 @@
 #include "clvHdMaster.hpp"
 #include "registers.hpp"
 #include "strANSIseq.hpp"
+#include <stdint.h> // uint8_t, uint16_t, uint32_t, uint64_t
 
 namespace ClvHd
 {
 class Master;
 
+/**
+ * @brief The EMG class
+ *
+ * This class is used to read EMG data from the ClvHd board.
+ */
 class EMG
 {
     protected:
@@ -48,6 +54,17 @@ class EMG
     EMG(Master *master, int id);
     ~EMG();
 
+    /**
+     * @brief setup Write all setup parameters to the board.
+     * 
+     * @param route_table Routing configuration of the EMG channels.
+     * @param chx_enable Select which INA channels are enabled.
+     * @param chx_high_res Select if the INA channels are high resolution.
+     * @param chx_high_freq Select if the INA channels are high frequency.
+     * @param R1 Gain R1 of the INA channels.
+     * @param R2 Gain R2 of the INA channels.
+     * @param R3 Gain R3 of the INA channels.
+     */
     void
     setup(int route_table[3][2],
           bool chx_enable[3],

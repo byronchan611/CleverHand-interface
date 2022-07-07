@@ -13,12 +13,12 @@
 #include <termios.h> // Contains POSIX terminal control definitions
 #include <unistd.h>  // write(), read(), close()
 
-#include <stdio.h>  // Standard input/output definitions
 #include <stdint.h> // uint8_t, uint16_t, uint32_t, uint64_t
+#include <stdio.h>  // Standard input/output definitions
 
-#include "clvHdEMG.hpp" // EMG class
+#include "clvHdEMG.hpp"   // EMG class
 #include "com_client.hpp" // COM class
-#include "registers.hpp" // Registers class
+#include "registers.hpp"  // Registers class
 
 #define GLOBAL_VERBOSE_LEVEL 0
 
@@ -27,9 +27,10 @@ namespace ClvHd
 class EMG;
 
 /**
- * @brief The Master class
+ * @brief The CleverHand Master board class
  *
- * This class is the main class of the library. It is used to communicate with the master board and to read/write registers of each modules.
+ * This class is the main class of the library.
+ * It is used to communicate with the master board and to read/write registers of each modules.
  *
  * @author Alexis Devillard
  * @date 2022
@@ -45,7 +46,7 @@ class Master : public Communication::Client
 
     /**
      * @brief readReg read size byte starting from reg address from the module with the given id.
-     * 
+     *
      * @param id Id of the module to read from.
      * @param reg Start address of the data to read.
      * @param size Number of bytes to read.
@@ -57,7 +58,7 @@ class Master : public Communication::Client
 
     /**
      * @brief writeReg write one byte to reg address to the module with the given id.
-     * 
+     *
      * @param id Id of the module to write to.
      * @param reg Start address of the data to write.
      * @param val Value to write.
@@ -67,8 +68,94 @@ class Master : public Communication::Client
     writeReg(uint8_t id, uint8_t reg, char val);
 
     /**
+     * @brief Get the number of modules connected to the master board.
+     * @return The number of modules connected to the master board.
+     */
+    int
+    getNbModules()
+    {
+        char msg[6] = {'n', 0, 0, 0};
+        writeS(msg, 4, true);
+        int n = readS((uint8_t *)msg, 4, true);
+        if(n == 4)
+            return msg[0];
+        else
+            return -1;
+    };
+
+    /**
+     * @brief Check if the connection to the master board is established
+     * @return True if the connection is established, false otherwise.
+     */
+    bool
+    test_connection()
+    {
+        char msg[6] = {'m', 1, 2, 3};
+        char ans[6];
+        writeS(msg, 4, true);
+        int n = readS((uint8_t *)ans, 6, true);
+        if(n != 6)
+            return false;
+        else
+            for(int i = 0; i < 4; i++)
+                if(ans[i] != msg[i])
+                    return false;
+        return true;
+    };
+
+    /**
+     * @brief Trigger a blinking effect on the module with the given id.
+     * @param id Id of the module to blink.
+     * @param dt_cs Duration of the blinking in centiseconds
+     * @param nb_blink Number of blinking.
+     */
+    void
+    blink(uint8_t id, uint8_t dt_cs, uint8_t nb_blink)
+    {
+        uint8_t msg[6] = {'b', id, dt_cs, nb_blink};
+        writeS(msg, 4, true);
+    }
+
+    /**
+     * @brief Get the version of the master board.
+     * @param i Index of the version value. For i = 1, the major version is returned. For i = 2, the minor version is returned. For i = 0, a short composed of the major and minor version is returned.
+     * @return The version of the master board. If 0 is returned, an error occured.
+     */
+    uint16_t
+    getVersion(int i)
+    {
+        char msg[6] = {'v', 0, 0, 0};
+        writeS(msg, 4, true);
+        if(readS((uint8_t *)msg, 4, true) == 4)
+        {
+            if(i == 0)
+                return *(uint16_t *)(msg);
+            if(i == 1)
+                return msg[0];
+            if(i == 2)
+                return msg[1];
+        }
+        return 0;
+    };
+
+    /**
+     * @brief Get the version of the master board.
+     * @return The version of the master board as a std::string. If an empty string is returned, an error occured.
+     */
+    std::string
+    getVersion()
+    {
+        char msg[6] = {'v', 0, 0, 0};
+        writeS(msg, 4, true);
+        if(readS((uint8_t *)msg, 4, true) == 4)
+            return std::to_string((int)msg[0]) + "." +
+                   std::to_string((int)msg[1]);
+        else
+            return "";
+    }
+
+    /**
      * @brief setup Get the number of EMG modules connected to the master board.
-     * 
      * @return int The number of EMG modules connected to the master board.
      */
     int
@@ -76,7 +163,7 @@ class Master : public Communication::Client
 
     /**
      * @brief setupEMG Setup the EMG module with the given id.
-     * 
+     *
      * @param n_board Id of the EMG module to setup.
      * @param route_table Route table of the EMG module.
      * @param chx_enable Enable/disable of the EMG module.
@@ -98,19 +185,19 @@ class Master : public Communication::Client
 
     /**
      * @brief data_ready Check if the data is ready to be read from from the given channel of the module with the given id.
-     * 
+     *
      * @param id Id of the module to check.
      * @param channel Channel to check.
      * @param precise If true, the function will return true if the precise signal (3bytes) of the given channel is ready to be read. If false, the function will return true if the fast signal (2byte) of the given channel is ready to be read.
-     * @return true 
-     * @return false 
+     * @return true
+     * @return false
      */
     bool
     data_ready(int id, int channel, bool precise = false);
 
     /**
      * @brief read_fast_data Read (actual request to the master board) the fast data(2byte) from the given channel of the module with the given id.
-     * 
+     *
      * @param id Id of the module to read from.
      * @param channel Channel to read from.
      * @return double Converted value of the fast data. Unit is mV.
@@ -120,7 +207,7 @@ class Master : public Communication::Client
 
     /**
      * @brief read_precise_data Read (actual request to the master board) the precise data(3byte) from the given channel of the module with the given id.
-     * 
+     *
      * @param id Id of the module to read from.
      * @param channel Channel to read from.
      * @return double Converted value of the precise data. Unit is mV.
@@ -130,7 +217,7 @@ class Master : public Communication::Client
 
     /**
      * @brief fast_EMG Read the previously requested fast data(2byte) from the given channel of the module with the given id.
-     * 
+     *
      * @param id Id of the module to read from.
      * @param channel Channel to read from.
      * @return double Converted value of the fast data. Unit is mV.
@@ -140,7 +227,7 @@ class Master : public Communication::Client
 
     /**
      * @brief precise_EMG Read the previously requested precise data(3byte) from the given channel of the module with the given id.
-     * 
+     *
      * @param id Id of the module to read from.
      * @param channel Channel to read from.
      * @return double Converted value of the precise data. Unit is mV.
@@ -168,14 +255,14 @@ class Master : public Communication::Client
 
     /**
      * @brief get_error Get the active error from the module with the given id.
-     * 
+     *
      * @param id Id of the module to read from.
      * @param verbose If true, the function will return a more detailed error message.
      * @return std::string A list of the active error.
      */
     std::string
-    get_error(int id, bool verbose=false);
-    
+    get_error(int id, bool verbose = false);
+
     std::vector<EMG *> m_EMG;
 
     private:

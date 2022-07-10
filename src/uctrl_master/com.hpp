@@ -2,55 +2,116 @@
 #include <NativeEthernet.h>
 #endif
 
+#ifdef IOT33
+#include <WiFiNINA.h>
+#include <SPI.h>
+#include "arduino_secrets.h"
+char ssid[] = SECRET_SSID;        // your network SSID (name)
+char pass[] = SECRET_PASS;    // your network password (use for WPA, or use as key for WEP)
+#endif
+
+#ifdef UDP_MODE
+#include <WiFiUdp.h>
+#endif
 
 // Simple class managing comunication interfaces
 class Com
 {
   public:
-    Com() 
+    Com()
     {
       mk_crctable();
-      };
+    };
 
     // Begin the comunication with the available interfaces
     // the arguments are
     // - b : the baud of the serial comunication
-    // - i3-i0 : are the bytes of the IP address 
+    // - i3-i0 : are the bytes of the IP address
     // - port : is the port listened by the server
-    int begin(int b=9600, uint8_t i3=0, uint8_t i2=0, uint8_t i1=0, uint8_t i0=0, int port=-1)
+    int begin(int b = 9600, int port = -1, uint8_t i3 = 0, uint8_t i2 = 0, uint8_t i1 = 0, uint8_t i0 = 0)
     {
-      Serial.begin(b);
+
+      if (port != -1)
+      {
 #ifdef TEENSY_4 // only available on teensy 4
-      byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
-      Ethernet.begin(mac, IPAddress(i3, i2, i1, i0));
-      m_server = new EthernetServer(port);
-      m_server->begin();// start the server
+        byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
+        Ethernet.begin(mac, IPAddress(i3, i2, i1, i0));
+        m_server = new EthernetServer(port);
+        m_server->begin();// start the server
 #endif
+#ifdef IOT33 // only available on nano33 iot
+        if (WiFi.status() == WL_NO_MODULE) {// check for the WiFi module:
+          Serial.println("Communication with WiFi module failed!");
+          while (true);
+        }
+        if (WiFi.firmwareVersion() < WIFI_FIRMWARE_LATEST_VERSION)
+          Serial.println("Please upgrade the firmware");
+        WiFi.config(IPAddress(i3, i2, i1, i0));
+        if (WiFi.beginAP(ssid, pass) != WL_AP_LISTENING) {
+          Serial.println("Creating access point failed");
+          while (true);
+        }
+#ifdef UDP_MODE
+        m_server = new WiFiUDP();
+        m_server->begin(port);// start the server
+#else
+        m_server = new WiFiServer(port);
+        m_server->begin();// start the server
+#endif
+        m_isSerial = false;
+        Serial.print("SSID: ");
+        Serial.println(WiFi.SSID());
+        Serial.print("IP Address: ");
+        Serial.println(WiFi.localIP());
+        Serial.print("Port: ");
+        Serial.println(port);
+#endif
+      }
+      else
+      {
+        m_isSerial = true;
+        Serial.begin(b);
+      }
+
       return 0;
     }
 
     // Return the number of byte available in the comunication buffer of the ethernet socket if available else Serial socket.
     int available()
     {
-#ifdef TEENSY_4 // only available on teensy 4
-      if (!isEthernet)
+      if(m_isSerial)
+        return Serial.available();
+
+#if defined(TEENSY_4) || defined(IOT33) // only available on teensy 4 or IOT33
+#ifdef UDP_MODE
+      int n= m_server->parsePacket();
+      if(n && m_port==0)
+      {
+        m_address = m_server->remoteIP();
+        m_port = m_server->remotePort();
+      };
+      return n;
+#else
+      if (!m_isSocket)
       {
         m_client = m_server->available();
         if (m_client)
-          isEthernet = true;
+          m_isSocket = true;
       }
-
-      if (isEthernet)
+      if (m_isSocket)
       {
         if (!m_client.connected())
-          isEthernet = false;
+          m_isSocket = false;
         else
-          return m_client.available();
+        {
+          return m_client.available();;
+        }
+
       }
-      else
 #endif
-        return Serial.available();
-      return 0;
+#endif
+        return 0;
+        
     }
 
     // Read n bytes the Ethernet socket if available else the Serial socket and store it in buff.
@@ -59,14 +120,19 @@ class Com
     size_t read(uint8_t* buff, size_t n, bool has_crc = false)
     {
       int n_r = 0;
-#ifdef TEENSY_4 // only available on teensy 4 // only available on teensy 4
-      if (isEthernet)
-        n_r = m_client.read(buff, n);
-      else
-#endif
+      if (m_isSerial)
         n_r = Serial.readBytes((char*)buff, n);
+#if defined(TEENSY_4) || defined(IOT33) // only available on teensy 4 or IOT33
+#ifndef UDP_MODE
+      else if (m_isSocket)
+        n_r = m_client.read(buff, n);
+#else
+      n_r = m_server->read(buff, n);
+
+#endif
+#endif
       if (n_r != n)
-        return 0;
+        return n_r;
       if (has_crc && CRC(buff, n - 2) != *(uint16_t *)(buff + n - 2))
         return -1;
       return n_r;
@@ -78,13 +144,28 @@ class Com
     // Return the number of bytes successfully written (crc16  included).
     size_t write(uint8_t* buff, size_t n, bool add_crc = false)
     {
-      if(add_crc)
-        *(uint16_t *)(buff + n) = CRC(buff, n);
-#ifdef TEENSY_4 // only available on teensy 4
-      if (isEthernet)
-        return m_client.write(buff, n + 2*add_crc);
+      if (add_crc)
+      {
+        m_crc = CRC(buff, n);
+        memcpy(buff + n, (uint8_t*)&m_crc, 2);
+      }
+      if (m_isSerial)
+        return Serial.write((char*)buff, n + 2 * add_crc);
+#if defined(TEENSY_4) || defined(IOT33) // only available on teensy 4 or IOT33
+#ifdef UDP_MODE
+      //Serial.println(m_address);
+      //Serial.println(m_port);
+      
+      m_server->beginPacket(m_address, m_port); 
+      int s = m_server->write(buff, n + 2 * add_crc);
+      m_server->endPacket();
+      return s;
+#else
+      else if (m_isSocket)
+        return m_client.write(buff, n + 2 * add_crc);
 #endif
-      return Serial.write((char*)buff, n + 2*add_crc);
+#endif
+      return 0;
     }
 
 
@@ -130,11 +211,24 @@ class Com
 #ifdef TEENSY_4 // only available on teensy 4
     EthernetClient m_client;
     EthernetServer* m_server;
-    bool isEthernet = false;
 #endif
-    bool isSerial = false;
+#ifdef IOT33 // only available on iot33
+
+#ifdef UDP_MODE
+    WiFiUDP* m_server;
+    IPAddress m_address;
+    int m_port=0;
+#else
+    WiFiClient m_client;
+    WiFiServer* m_server;
+#endif
+
+#endif
+    bool m_isSocket = false;
+    bool m_isSerial = false;
 
     uint16_t m_crctable[256];
     uint16_t m_crc_accumulator;
+    uint16_t m_crc;
 
 };

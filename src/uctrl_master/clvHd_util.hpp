@@ -15,7 +15,7 @@ class ClvHdEMG
     void begin()
     {
       SPI.begin();
-      SPI.beginTransaction(SPISettings(20000000, MSBFIRST, SPI_MODE0));
+      //SPI.beginTransaction(SPISettings(20000000, MSBFIRST, SPI_MODE0));
       for (int i = 0; i < 4; i++)
         pinMode(m_addPins[i], OUTPUT);
       pinMode(m_gpio1Pin, OUTPUT);

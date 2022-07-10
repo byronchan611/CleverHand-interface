@@ -10,7 +10,7 @@ main()
     try
     {
         ClvHd::Master master;
-        master.open_connection("/dev/ttyACM0");
+        master.open_connection(Communication::Client::SERIAL, "/dev/ttyACM0");
         master.setup();
 	std::cout << "CleverHand Serial Interface:" << std::endl;
         // int nb_ch = 2;

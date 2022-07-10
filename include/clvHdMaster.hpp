@@ -37,6 +37,8 @@ class EMG;
  */
 class Master : public Communication::Client
 {
+    using clk = std::chrono::system_clock;
+using sec = std::chrono::duration<double>;
     public:
     Master(){};
     ~Master();
@@ -263,6 +265,9 @@ class Master : public Communication::Client
     std::string
     get_error(int id, bool verbose = false);
 
+    bool
+    error_at(int id, int index);
+
     std::vector<EMG *> m_EMG;
 
     private:
@@ -270,6 +275,7 @@ class Master : public Communication::Client
     ADS1293_Reg m_streaming_reg;
     size_t m_streaming_size;
     std::vector<std::pair<int, uint8_t>> m_streaming_channels;
+    uint8_t m_buffer[512];
 };
 } // namespace ClvHd
 #endif

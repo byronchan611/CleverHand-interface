@@ -1,27 +1,10 @@
 //#define TEENSY_41
-#define IOT33
+//#define IOT33
 //#define UDP_MODE
 #define VERSION 0x0200
 #include "clvHd_util.hpp"
 #include "com.hpp"
 
-#ifdef __arm__
-// should use uinstd.h to define sbrk but Due causes a conflict
-extern "C" char* sbrk(int incr);
-#else  // __ARM__
-extern char *__brkval;
-#endif  // __arm__
-
-int freeMemory() {
-  char top;
-#ifdef __arm__
-  return &top - reinterpret_cast<char*>(sbrk(0));
-#elif defined(CORE_TEENSY) || (ARDUINO > 103 && ARDUINO != 151)
-  return &top - __brkval;
-#else  // __arm__
-  return __brkval ? &top - __brkval : &top - __malloc_heap_start;
-#endif  // __arm__
-}
 
 #define DEBUG(x) Serial.print(x)
 #define DEBUGF(x,y) Serial.print(x,y)
@@ -36,13 +19,12 @@ int i, nb=0;
 ClvHdEMG clvHdEMG;
 Com com_interface;
 
-int ii=0;
-
 void setup()
 {
   
   Serial.begin(9600);
-  com_interface.begin(500000, 5000, 192, 168, 127, 253);
+  while(!Serial){}
+  com_interface.begin(9600);//, 5000, 192, 168, 127, 253);
   clvHdEMG.begin();
   
 }
@@ -50,7 +32,6 @@ void setup()
 
 void loop()
 {
-  //delay(10);
   int nn = com_interface.available();
   if (nn >= pkgSize)
   {
@@ -82,6 +63,7 @@ void loop()
         {
           nb = clvHdEMG.get_nbBoard();
           buff[0] = nb;
+          buff[1] = 0;
           com_interface.write((uint8_t*)buff, 2, true);
           break;
         }
@@ -93,7 +75,6 @@ void loop()
       case 'm':// Mirror cmd > 'm' | b1 | b2 | b3
         {
           com_interface.write((uint8_t*)buff, 4, true);
-          Serial.println("hey");
           break;
         }
       case 'v':// Version cmd > 'v' | 0 | 0 | 0

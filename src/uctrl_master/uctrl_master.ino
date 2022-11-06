@@ -1,5 +1,5 @@
 //#define TEENSY_41
-#define IOT33
+//#define IOT33
 //#define UDP_MODE
 #define VERSION 0x0200
 #include "clvHd_util.hpp"
@@ -22,9 +22,9 @@ Com com_interface;
 void setup()
 {
   
-  Serial.begin(9600);
+  Serial.begin(500000);
   while(!Serial){}
-  com_interface.begin(9600);//, 5000, 192, 168, 127, 253);
+  com_interface.begin(500000);//, 5000, 192, 168, 127, 253);
   clvHdEMG.begin();
   
 }

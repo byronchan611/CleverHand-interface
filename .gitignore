@@ -2,6 +2,8 @@
 !.gitignore
 !/bin
 !/bin/*
+!/script
+!/script/*
 !/src
 !/src/*
 !/include

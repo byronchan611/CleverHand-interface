@@ -104,14 +104,12 @@ int
 Master::setup()
 {
     // //Communication::Client::clean_start();
-    std::cout << "> Testing connection: "
-              << ESC::fstr(((test_connection()) ? "Established" : "Error"),
-                           {ESC::FORMAT::FG_GREEN})
-              << std::endl;
+    logln("Testing connection: " + ESC::fstr(((test_connection()) ? "Established" : "Error"),
+                                             {ESC::FORMAT::FG_GREEN}), true);
 
     //blink(15, 10, 3);
     int8_t nb_emg = getNbModules();
-    std::cout << "> Number of modules: " << (int)nb_emg << std::endl;
+    logln("Number of EMG modules: " + std::to_string((int)nb_emg), true);
     for(int i = 0; i < nb_emg; i++) m_EMG.push_back(EMG(this, i));
     return nb_emg;
 }

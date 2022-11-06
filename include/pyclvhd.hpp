@@ -3,17 +3,62 @@
 
 #include "clvHdEMG.hpp"
 #include "clvHdMaster.hpp"
-
 #include <boost/python.hpp>
 
 using namespace boost::python;
+
+//wrapper to access list
+void
+setupEMG(ClvHd::Master &m,
+         int n_board,
+         boost::python::list _route_table,
+         boost::python::list _chx_enable,
+         boost::python::list _chx_high_res,
+         boost::python::list _chx_high_freq,
+         boost::python::list _R1,
+         int R2,
+         boost::python::list _R3)
+{
+    int route_table[3][2] = {
+        {extract<int>(_route_table[0][0]), extract<int>(_route_table[0][1])},
+        {extract<int>(_route_table[1][0]), extract<int>(_route_table[1][1])},
+        {extract<int>(_route_table[2][0]), extract<int>(_route_table[2][1])}};
+    bool chx_enable[3] = {extract<bool>(_chx_enable[0]),
+                          extract<bool>(_chx_enable[1]),
+                          extract<bool>(_chx_enable[2])};
+    bool chx_high_res[3] = {extract<bool>(_chx_high_res[0]),
+                            extract<bool>(_chx_high_res[1]),
+                            extract<bool>(_chx_high_res[2])};
+    bool chx_high_freq[3] = {extract<bool>(_chx_high_freq[0]),
+                             extract<bool>(_chx_high_freq[1]),
+                             extract<bool>(_chx_high_freq[2])};
+    int R1[3] = {extract<int>(_R1[0]), extract<int>(_R1[1]),
+                 extract<int>(_R1[2])};
+    int R3[3] = {extract<int>(_R3[0]), extract<int>(_R3[1]),
+                 extract<int>(_R3[2])};
+    m.setupEMG(n_board, route_table, chx_enable, chx_high_res, chx_high_freq,
+               R1, R2, R3);
+};
+
 
 BOOST_PYTHON_MODULE(pyclvhd)
 {
     uint16_t (ClvHd::Master::*v1)(int) = &ClvHd::Master::getVersion;
     std::string (ClvHd::Master::*v2)() = &ClvHd::Master::getVersion;
-    class_<ClvHd::Master>("Master", init<int>())
-        .def("printBit", &ClvHd::Master::printBit)
+
+    class_<ClvHd::Master>("Master", init<int>(arg("verbose") = -1))
+        .def("serial_connection", &ClvHd::Master::serial_connection,
+             args("path"))
+        .def("setupEMG", setupEMG,
+             args("n_board", "route_table", "chx_enable", "chx_high_res",
+                  "chx_high_freq", "R1", "R2", "R3"),
+             "Setup the EMG module with the given id.\n\n@param n_board Id of "
+             "the EMG module to setup.\n@param route_table Route table of the "
+             "EMG module.\n@param chx_enable Enable/disable of the EMG "
+             "module.\n@param chx_high_res High resolution of the EMG "
+             "module.\n@param chx_high_freq High frequency of the EMG "
+             "module.\n@param R1 R1 of the EMG module.\n@param R2 R2 of the "
+             "EMG module.\n@param R3 R3 of the EMG module.")
         .def("readReg8", &ClvHd::Master::readReg8, args("id", "reg"),
              "Read 8-bit register\n\n:param id: ID of the EMG module\n:param "
              "reg: Register address\n:return: Register value")

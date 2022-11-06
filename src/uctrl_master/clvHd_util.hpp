@@ -25,18 +25,18 @@ class ClvHdEMG
       this->m_nb_board = nb_emg_connected();
 
       
-      digitalWrite(m_gpio1Pin, HIGH);
-      for(int i =0;;i++)
-      {
-        selectBrd(13+i%2);
-        delay(2000);
-      }
-//
-//      // quick blink on available modules
-//
 //      digitalWrite(m_gpio1Pin, HIGH);
-//      for (int j = 15; j > 15 - this->m_nb_board; j--)
-//        this->blink(j, 5, m_nb_board);
+//      for(int i =0;;i++)
+//      {
+//        selectBrd(13+i%2);
+//        delay(200);
+//      }
+//
+      // quick blink on available modules
+
+      digitalWrite(m_gpio1Pin, HIGH);
+      for (int j = 15; j > 15 - this->m_nb_board; j--)
+        this->blink(j, 5, m_nb_board);
     };
 
     //Select the module by activating the coreponding address pins.
@@ -81,10 +81,10 @@ class ClvHdEMG
       byte val = 0;
       for (unsigned i = 0; i < 16; i++)
       {
-        Serial.print(i);
-        Serial.print(" ");
+        //Serial.print(i);
+        //Serial.print(" ");
         readRegister(0x40, &val, 1, i);
-        Serial.println((int)val);
+        //Serial.println((int)val);
         if (val == 0x01)
           m_nb_board++;
       }

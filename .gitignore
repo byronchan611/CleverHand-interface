@@ -28,3 +28,4 @@
 !/.dir-locals.el
 !/README.md
 !/.clang-format
+!CMakePython.txt

@@ -322,11 +322,11 @@ EMG::conv(int ch, int32_t val)
            4.8 / 3.5 * 1000;
 }
 
-EMG::Error *
+void
 EMG::get_error()
 {
     m_master->readReg(m_id, ERROR_LOD_REG, 7, &m_regs[ERROR_LOD_REG]);
-    return (Error *)&(m_regs[ERROR_LOD_REG]);
+    //return (Error *)&(m_regs[ERROR_LOD_REG]);
 }
 
 std::string

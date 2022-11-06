@@ -27,6 +27,54 @@ Master::readReg(uint8_t id, uint8_t reg, size_t size, const void *buff)
     return readS((uint8_t *)buff, size + 2, true); //+2 for CRC
 };
 
+int8_t
+Master::readReg8(uint8_t id, uint8_t reg)
+{
+    int8_t val;
+    readReg(id, reg, 1, &val);
+    return val;
+};
+
+int16_t
+Master::readReg16(uint8_t id, uint8_t reg)
+{
+    int16_t val;
+    readReg(id, reg, 2, &val);
+    return val;
+};
+
+int32_t
+Master::readReg32(uint8_t id, uint8_t reg)
+{
+    int32_t val;
+    readReg(id, reg, 4, &val);
+    return val;
+};
+
+int64_t
+Master::readReg64(uint8_t id, uint8_t reg)
+{
+    int64_t val;
+    readReg(id, reg, 8, &val);
+    return val;
+};
+
+float
+Master::readRegFloat(uint8_t id, uint8_t reg)
+{
+    float val;
+    readReg(id, reg, 4, &val);
+    return val;
+};
+
+double
+Master::readRegDouble(uint8_t id, uint8_t reg)
+{
+    double val;
+    readReg(id, reg, 8, &val);
+    return val;
+};
+
 int
 Master::writeReg(uint8_t id, uint8_t reg, char val)
 {
@@ -48,8 +96,8 @@ Master::setupEMG(int n_board,
                  int R2,
                  int R3[3])
 {
-    m_EMG[n_board]->setup(route_table, chx_enable, chx_high_res, chx_high_freq,
-                          R1, R2, R3);
+    m_EMG[n_board].setup(route_table, chx_enable, chx_high_res, chx_high_freq,
+                         R1, R2, R3);
 }
 
 int
@@ -64,51 +112,51 @@ Master::setup()
     //blink(15, 10, 3);
     int8_t nb_emg = getNbModules();
     std::cout << "> Number of modules: " << (int)nb_emg << std::endl;
-    for(int i = 0; i < nb_emg; i++) m_EMG.push_back(new EMG(this, i));
+    for(int i = 0; i < nb_emg; i++) m_EMG.push_back(EMG(this, i));
     return nb_emg;
 }
 
 bool
 Master::data_ready(int id, int channel, bool precise)
 {
-  uint8_t mask = 1 << (2 + precise * 3 + channel) ;
-  return *(m_EMG[id]->get_regs() + DATA_STATUS_REG) & mask;
+    uint8_t mask = 1 << (2 + precise * 3 + channel);
+    return *(m_EMG[id].get_regs() + DATA_STATUS_REG) & mask;
 }
 
 double
 Master::read_precise_EMG(int id, int channel)
 {
-    return m_EMG[id]->read_precise_value(channel);
+    return m_EMG[id].read_precise_value(channel);
 }
 
 double
 Master::read_fast_EMG(int id, int channel)
 {
-    return m_EMG[id]->read_fast_value(channel);
+    return m_EMG[id].read_fast_value(channel);
 }
 
 double
 Master::precise_EMG(int id, int channel)
 {
-    return m_EMG[id]->precise_value(channel);
+    return m_EMG[id].precise_value(channel);
 }
 
 double
 Master::fast_EMG(int id, int channel)
 {
-    return m_EMG[id]->fast_value(channel);
+    return m_EMG[id].fast_value(channel);
 }
 
 void
 Master::start_acquisition()
 {
-    for(int i = 0; i < m_EMG.size(); i++) m_EMG[i]->set_mode(EMG::START_CONV);
+    for(int i = 0; i < m_EMG.size(); i++) m_EMG[i].set_mode(EMG::START_CONV);
 }
 
 void
 Master::stop_acquisition()
 {
-    for(int i = 0; i < m_EMG.size(); i++) m_EMG[i]->set_mode(EMG::STANDBY);
+    for(int i = 0; i < m_EMG.size(); i++) m_EMG[i].set_mode(EMG::STANDBY);
 }
 
 int
@@ -117,28 +165,29 @@ Master::read_all_signal()
     char msg[6] = {'R', 0, (char)DATA_STATUS_REG, (char)16};
     std::chrono::time_point<std::chrono::system_clock> t = clk::now();
     writeS(msg, 4, true);
-    sec dt = clk::now()-t;
+    sec dt = clk::now() - t;
     std::cout << dt.count() << std::endl;
     t = clk::now();
-    if( readS((uint8_t *)m_buffer, 16*m_EMG.size()+2, true)==16*m_EMG.size()+2)
+    if(readS((uint8_t *)m_buffer, 16 * m_EMG.size() + 2, true) ==
+       16 * m_EMG.size() + 2)
     {
-        dt = clk::now()-t;
+        dt = clk::now() - t;
         std::cout << dt.count() << std::endl;
-	for(int i = 0; i < m_EMG.size(); i++)
-	    std::copy(m_buffer+ 16*i, m_buffer + 16*(i+1),
-		  m_EMG[i]->get_regs() + DATA_STATUS_REG);
+        for(int i = 0; i < m_EMG.size(); i++)
+            std::copy(m_buffer + 16 * i, m_buffer + 16 * (i + 1),
+                      m_EMG[i].get_regs() + DATA_STATUS_REG);
     }
-    return 16*m_EMG.size()+2;
+    return 16 * m_EMG.size() + 2;
 }
 
 std::string
 Master::get_error(int id, bool verbose)
 {
     std::string str;
-    m_EMG[id]->get_error();
-    str += m_EMG[id]->error_status_str();
+    m_EMG[id].get_error();
+    str += m_EMG[id].error_status_str();
     if(verbose)
-        str += m_EMG[id]->error_range_str();
+        str += m_EMG[id].error_range_str();
 
     return str;
 }
@@ -146,7 +195,8 @@ Master::get_error(int id, bool verbose)
 bool
 Master::error_at(int id, int index)
 {
-    return (m_EMG[id]->get_regs() + ERROR_STATUS_REG)[index/8] & (1 << (index%8));
+    return (m_EMG[id].get_regs() + ERROR_STATUS_REG)[index / 8] &
+           (1 << (index % 8));
 }
 
 } // namespace ClvHd

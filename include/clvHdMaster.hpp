@@ -38,9 +38,10 @@ class EMG;
 class Master : public Communication::Client
 {
     using clk = std::chrono::system_clock;
-using sec = std::chrono::duration<double>;
+    using sec = std::chrono::duration<double>;
+
     public:
-    Master(){};
+    Master(int verbose = -1) : ESC::CLI(verbose, "ClvHd-Master"){};
     ~Master();
 
     void
@@ -57,6 +58,19 @@ using sec = std::chrono::duration<double>;
      */
     int
     readReg(uint8_t id, uint8_t reg, size_t size, const void *buff);
+
+    int8_t
+    readReg8(uint8_t id, uint8_t reg);
+    int16_t
+    readReg16(uint8_t id, uint8_t reg);
+    int32_t
+    readReg32(uint8_t id, uint8_t reg);
+    int64_t
+    readReg64(uint8_t id, uint8_t reg);
+    float
+    readRegFloat(uint8_t id, uint8_t reg);
+    double
+    readRegDouble(uint8_t id, uint8_t reg);
 
     /**
      * @brief writeReg write one byte to reg address to the module with the given id.
@@ -268,7 +282,25 @@ using sec = std::chrono::duration<double>;
     bool
     error_at(int id, int index);
 
-    std::vector<EMG *> m_EMG;
+    operator std::string() const
+    {
+        return "Master board: " + std::to_string(m_EMG.size()) +
+               " EMG module(s) connected.";
+    };
+
+    std::string
+    repr() const
+    {
+        return "Master object";
+    };
+
+    EMG &
+    emg(int i)
+    {
+        return m_EMG[i];
+    };
+
+    std::vector<EMG> m_EMG;
 
     private:
     bool m_streaming = false;

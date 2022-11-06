@@ -23,7 +23,7 @@ class Master;
  */
 class EMG
 {
-    protected:
+    public:
     typedef struct
     {
         uint8_t error_lod;
@@ -135,7 +135,7 @@ class EMG
     double
     conv(int ch, int32_t val);
 
-    Error *
+    void
     get_error();
 
     std::string

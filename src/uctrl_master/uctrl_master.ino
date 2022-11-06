@@ -1,5 +1,5 @@
 //#define TEENSY_41
-//#define IOT33
+#define IOT33
 //#define UDP_MODE
 #define VERSION 0x0200
 #include "clvHd_util.hpp"

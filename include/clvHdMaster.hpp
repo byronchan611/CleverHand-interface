@@ -41,7 +41,7 @@ class Master : public Communication::Client
     using sec = std::chrono::duration<double>;
 
     public:
-    Master(int verbose = -1) : ESC::CLI(verbose, "ClvHd-Master"){};
+    Master(int verbose = -1) : ESC::CLI(verbose, "ClvHd-Master"), m_verbose(verbose){};
     ~Master();
 
     void
@@ -199,7 +199,7 @@ class Master : public Communication::Client
    * @param R2 R2 of the EMG module.
    * @param R3 R3 of the EMG module.
    */
-  void
+  int
   setupEMG(int n_board,
            int route_table[3][2],
            bool chx_enable[3],
@@ -264,13 +264,13 @@ class Master : public Communication::Client
   /**
    * @brief Set all modules to converstion state.
    */
-  void
+  int
   start_acquisition();
 
   /**
    * @brief Set all modules to standby state.
    */
-  void
+  int
   stop_acquisition();
 
   /**
@@ -307,10 +307,10 @@ class Master : public Communication::Client
   EMG &
   emg(int i)
   {
-      return m_EMG[i];
+      return *m_EMG[i];
   };
 
-  std::vector<EMG> m_EMG;
+  std::vector<EMG*> m_EMG;
 
   private:
   bool m_streaming = false;
@@ -318,6 +318,7 @@ class Master : public Communication::Client
   size_t m_streaming_size;
   std::vector<std::pair<int, uint8_t>> m_streaming_channels;
   uint8_t m_buffer[512];
+  int m_verbose;
 };
 } // namespace ClvHd
 #endif

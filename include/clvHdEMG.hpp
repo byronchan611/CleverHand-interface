@@ -16,12 +16,14 @@ namespace ClvHd
 {
 class Master;
 
+using namespace std;
+
 /**
  * @brief The EMG class
  *
  * This class is used to read EMG data from the ClvHd board.
  */
-class EMG
+class EMG : virtual public ESC::CLI
 {
     public:
     typedef struct
@@ -51,7 +53,7 @@ class EMG
     };
 
     public:
-    EMG(Master *master, int id);
+    EMG(Master *master, int id, int verbose=-1);
     ~EMG();
 
     /**
@@ -65,7 +67,7 @@ class EMG
      * @param R2 Gain R2 of the INA channels.
      * @param R3 Gain R3 of the INA channels.
      */
-    void
+    int
     setup(int route_table[3][2],
           bool chx_enable[3],
           bool chx_high_res[3],
@@ -74,48 +76,70 @@ class EMG
           int R2,
           int R3[3]);
 
-    void
+    int
     route_channel(uint8_t channel, uint8_t pos_in, uint8_t neg_in);
+    int
+    get_route_neg(int ch);
+    int
+    get_route_pos(int ch);
 
     int
     set_mode(Mode mode);
     Mode
-    get_mode()
-    {
-        return m_mode;
-    }
+    get_mode();
 
-    void
+    int
     config_clock(bool start, CLK_SRC src, bool en_output);
 
-    void
-    enable_channels(bool ch1, bool ch2, bool ch3);
+    bool
+    is_clock_started();
+    bool
+    is_clock_ext();
+    bool
+    is_clock_output_enabled();
 
-    void
+    int
+    enable_ADC(bool ch1, bool ch2, bool ch3);
+    bool
+    is_ADC_enabled(int ch);
+
+    int
     enable_SDM(bool ch1, bool ch2, bool ch3);
+    bool
+    is_SDM_enabled(int ch);
 
-    void
+    int
     enable_INA(bool ch1, bool ch2, bool ch3);
+    bool
+    is_INA_enabled(int ch);
 
     //config a frequency of 1024000Hz or 204800Hz
-    void
+    int
     config_frequence(bool ch1_freq_double,
                      bool ch2_freq_double,
                      bool ch3_freq_double);
-    void
+    bool
+    is_high_freq_enabled(int ch);
+
+    int
     config_resolution(bool ch1_high_res, bool ch2_high_res, bool ch3_high_res);
+    bool
+    is_high_res_enabled(int ch);
 
     //2 or 4
-    void
+    int
     config_R1(uint8_t R1_ch1, uint8_t R1_ch2, uint8_t R1_ch3);
+    int get_R1(int ch);
 
     //4, 5, 6 or 8
-    void
+    int
     config_R2(uint8_t R2);
+    int get_R2(int ch=0);
 
     //4, 6, 8, 12, 16, 32, 64, 128
-    void
+    int
     config_R3(int ch, uint8_t R3);
+    int get_R3(int ch);
 
     double
     read_precise_value(int ch);
@@ -135,7 +159,7 @@ class EMG
     double
     conv(int ch, int32_t val);
 
-    void
+    int
     get_error();
 
     std::string
@@ -149,13 +173,15 @@ class EMG
     {
         return m_regs;
     };
+    int16_t *m_fast_value;
 
-    private:
+
+private:
     Master *m_master;
     int m_id;
     Mode m_mode;
     uint8_t m_regs[0x50];
-    int16_t *m_fast_value;
+
     int32_t *m_precise_value[3];
     int32_t m_fast_adc_max;
     int32_t m_precise_adc_max[3];

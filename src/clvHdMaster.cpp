@@ -80,13 +80,13 @@ Master::writeReg(uint8_t id, uint8_t reg, char val)
 {
     char msg[6] = {'w', (char)(0x0f - id), (char)reg, (char)val};
     writeS(msg, 4, true);
-    readS((uint8_t *)m_buffer, 4, true); //+2 for CRC
+    int n = readS((uint8_t *)m_buffer, 4, true); //+2 for CRC
     if(m_buffer[0] == 'w' && m_buffer[1] == val)
         return 1;
     return -1;
 };
 
-void
+int
 Master::setupEMG(int n_board,
                  int route_table[3][2],
                  bool chx_enable[3],
@@ -96,7 +96,7 @@ Master::setupEMG(int n_board,
                  int R2,
                  int R3[3])
 {
-    m_EMG[n_board].setup(route_table, chx_enable, chx_high_res, chx_high_freq,
+    return m_EMG[n_board]->setup(route_table, chx_enable, chx_high_res, chx_high_freq,
                          R1, R2, R3);
 }
 
@@ -110,7 +110,9 @@ Master::setup()
     //blink(15, 10, 3);
     int8_t nb_emg = getNbModules();
     logln("Number of EMG modules: " + std::to_string((int)nb_emg), true);
-    for(int i = 0; i < nb_emg; i++) m_EMG.push_back(EMG(this, i));
+    for(int i = 0; i < nb_emg; i++) m_EMG.push_back(new EMG(this, i, m_verbose));
+
+
     return nb_emg;
 }
 
@@ -118,63 +120,59 @@ bool
 Master::data_ready(int id, int channel, bool precise)
 {
     uint8_t mask = 1 << (2 + precise * 3 + channel);
-    return *(m_EMG[id].get_regs() + DATA_STATUS_REG) & mask;
+    return *(m_EMG[id]->get_regs() + DATA_STATUS_REG) & mask;
 }
 
 double
 Master::read_precise_EMG(int id, int channel)
 {
-    return m_EMG[id].read_precise_value(channel);
+    return m_EMG[id]->read_precise_value(channel);
 }
 
 double
 Master::read_fast_EMG(int id, int channel)
 {
-    return m_EMG[id].read_fast_value(channel);
+    return m_EMG[id]->read_fast_value(channel);
 }
 
 double
 Master::precise_EMG(int id, int channel)
 {
-    return m_EMG[id].precise_value(channel);
+    return m_EMG[id]->precise_value(channel);
 }
 
 double
 Master::fast_EMG(int id, int channel)
 {
-    return m_EMG[id].fast_value(channel);
+    return m_EMG[id]->fast_value(channel);
 }
 
-void
+int
 Master::start_acquisition()
 {
-    for(int i = 0; i < m_EMG.size(); i++) m_EMG[i].set_mode(EMG::START_CONV);
+    int n=0;
+    for(int i = 0; i < m_EMG.size(); i++) n+=m_EMG[i]->set_mode(EMG::START_CONV);
+    return n;
 }
 
-void
+int
 Master::stop_acquisition()
 {
-    for(int i = 0; i < m_EMG.size(); i++) m_EMG[i].set_mode(EMG::STANDBY);
+    int n =0;
+    for(int i = 0; i < m_EMG.size(); i++) n+=m_EMG[i]->set_mode(EMG::STANDBY);
+    return n;
 }
 
 int
 Master::read_all_signal()
 {
-    char msg[6] = {'R', 0, (char)DATA_STATUS_REG, (char)16};
-    std::chrono::time_point<std::chrono::system_clock> t = clk::now();
+    char msg[6] = {'R', 0, (char)DATA_STATUS_REG, (char)16};//read (satue + 3*pace(2bytes) + 3*pace(3bytes))=16 for each connected  modules
     writeS(msg, 4, true);
-    sec dt = clk::now() - t;
-    std::cout << dt.count() << std::endl;
-    t = clk::now();
-    if(readS((uint8_t *)m_buffer, 16 * m_EMG.size() + 2, true) ==
-       16 * m_EMG.size() + 2)
-    {
-        dt = clk::now() - t;
-        std::cout << dt.count() << std::endl;
-        for(int i = 0; i < m_EMG.size(); i++)
-            std::copy(m_buffer + 16 * i, m_buffer + 16 * (i + 1),
-                      m_EMG[i].get_regs() + DATA_STATUS_REG);
-    }
+    int n = readS((uint8_t *)m_buffer, 16 * m_EMG.size() + 2, true);
+    for(int i = 0; i < m_EMG.size(); i++)
+        std::copy(m_buffer + 16 * i, m_buffer + 16 * (i + 1),
+                  m_EMG[i]->get_regs() + DATA_STATUS_REG);
+
     return 16 * m_EMG.size() + 2;
 }
 
@@ -182,10 +180,10 @@ std::string
 Master::get_error(int id, bool verbose)
 {
     std::string str;
-    m_EMG[id].get_error();
-    str += m_EMG[id].error_status_str();
+    m_EMG[id]->get_error();
+    str += m_EMG[id]->error_status_str();
     if(verbose)
-        str += m_EMG[id].error_range_str();
+        str += m_EMG[id]->error_range_str();
 
     return str;
 }
@@ -193,7 +191,7 @@ Master::get_error(int id, bool verbose)
 bool
 Master::error_at(int id, int index)
 {
-    return (m_EMG[id].get_regs() + ERROR_STATUS_REG)[index / 8] &
+    return (m_EMG[id]->get_regs() + ERROR_STATUS_REG)[index / 8] &
            (1 << (index % 8));
 }
 

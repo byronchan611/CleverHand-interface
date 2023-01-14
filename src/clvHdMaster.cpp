@@ -120,6 +120,8 @@ bool
 Master::data_ready(int id, int channel, bool precise)
 {
     uint8_t mask = 1 << (2 + precise * 3 + channel);
+    if(!(*(m_EMG[id]->get_regs() + DATA_STATUS_REG)&0x02))
+        return false;
     return *(m_EMG[id]->get_regs() + DATA_STATUS_REG) & mask;
 }
 
@@ -169,9 +171,13 @@ Master::read_all_signal()
     char msg[6] = {'R', 0, (char)DATA_STATUS_REG, (char)16};//read (satue + 3*pace(2bytes) + 3*pace(3bytes))=16 for each connected  modules
     writeS(msg, 4, true);
     int n = readS((uint8_t *)m_buffer, 16 * m_EMG.size() + 2, true);
-    for(int i = 0; i < m_EMG.size(); i++)
-        std::copy(m_buffer + 16 * i, m_buffer + 16 * (i + 1),
-                  m_EMG[i]->get_regs() + DATA_STATUS_REG);
+    if(n==16 * m_EMG.size() + 2)
+        for(int i = 0; i < m_EMG.size(); i++)
+            std::copy(m_buffer + 16 * i, m_buffer + 16 * (i + 1),
+                      m_EMG[i]->get_regs() + DATA_STATUS_REG);
+    //printf("r %x\n",m_buffer[1]);
+    //printf("s %x\n",(m_EMG[0]->get_regs() + DATA_STATUS_REG)[1]);
+
 
     return 16 * m_EMG.size() + 2;
 }

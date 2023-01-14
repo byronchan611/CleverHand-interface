@@ -132,6 +132,18 @@ EMG::route_channel(uint8_t channel, uint8_t pos_in, uint8_t neg_in)
     pos_in = (pos_in < 0) ? 0 : (pos_in > 6) ? 6 : pos_in;
     neg_in = (neg_in < 0) ? 0 : (neg_in > 6) ? 6 : neg_in;
 
+    if(pos_in==5)
+        pos_in=6;
+    else if(pos_in==6)
+        pos_in=5;
+
+    if(neg_in==5)
+        neg_in=6;
+    else if(neg_in==6)
+        neg_in=5;
+
+    printf("%d %d\n", pos_in, neg_in);
+
     channel = ((channel < 0) ? 0 : (channel > 2) ? 2 : channel);
     uint8_t val = pos_in | (neg_in << 3);
     m_regs[FLEX_CH0_CN_REG + channel] = val;
@@ -418,7 +430,15 @@ int EMG::get_R3(int ch)
 double
 EMG::precise_value(int ch)
 {
-    return conv(ch, *m_precise_value[ch]);
+    //printf("%d %x\n",ch, *m_precise_value[ch]);
+    //int val = *m_precise_value[ch]&0xffffff;
+
+    //printf("%d f %x\n",ch, m_fast_value[ch]);
+    double val = conv(ch, *m_precise_value[ch]);
+    // if(ch==0 && abs(val)>100)
+    //     printf("%x %lf %x\n",*(this->get_regs() + DATA_STATUS_REG), val,(__builtin_bswap32(*m_precise_value[ch]) >> 8));
+
+    return val;
 };
 
 double
@@ -461,7 +481,7 @@ double
 EMG::conv(int ch, int32_t val)
 {
     //m_regs[DATA_CH0_ECG_REG+3] =0x01;
-    // std::cout << "32conv " << std::hex << (__builtin_bswap32(val) >> 8) << " "
+    //std::cout << "32conv " << std::hex << (__builtin_bswap32(val) >> 8) << " "
     //           << m_precise_adc_max[ch] << std::dec << std::endl;
     return ((__builtin_bswap32(val) >> 8) * 1. / m_precise_adc_max[ch] - 0.5) *
            4.8 / 3.5 * 1000;

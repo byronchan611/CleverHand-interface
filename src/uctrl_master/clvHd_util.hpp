@@ -19,11 +19,31 @@ class ClvHdEMG
       for (int i = 0; i < 4; i++)
         pinMode(m_addPins[i], OUTPUT);
       pinMode(m_gpio1Pin, OUTPUT);
-      digitalWrite(m_gpio1Pin, LOW);
+      digitalWrite(m_gpio1Pin, HIGH);
       delay(100);
 
       this->m_nb_board = nb_emg_connected();
-
+      
+      //Serial.println("hey");
+      //Serial.println(this->m_nb_board);
+      
+      // int id=14;
+      // int dt_cs=5;
+      // int n=5;
+      // selectBrd(id);
+      // for (int i = 0; i < 2*n; i++)
+      // {
+      //   digitalWrite(m_gpio1Pin, i % 2);
+      //   delay(dt_cs*10);
+      // }
+      // for (int j = 15; j > 15 - 8; j--)
+      // {
+      //   selectBrd(j);
+      //   delay(1000);
+      // }  
+      
+      
+      //while(1);
       
 //      digitalWrite(m_gpio1Pin, HIGH);
 //      for(int i =0;;i++)
@@ -35,8 +55,8 @@ class ClvHdEMG
       // quick blink on available modules
 
       digitalWrite(m_gpio1Pin, HIGH);
-      for (int j = 15; j > 15 - this->m_nb_board; j--)
-        this->blink(j, 5, m_nb_board);
+      for (int j = 15; j > 15 -this->m_nb_board ; j--)
+        this->blink(j, 2, 3);
     };
 
     //Select the module by activating the coreponding address pins.
@@ -60,7 +80,7 @@ class ClvHdEMG
       else
         for (unsigned i = n - 1; i >= 0; i--)
           *(val + i) = SPI.transfer(0x00);
-      selectBrd(0x0e - m_nb_board);
+      selectBrd(0x00);
     }
 
     // Write 1 byte to the reg address of the module coreponding to id.
@@ -71,7 +91,7 @@ class ClvHdEMG
       selectBrd(id);
       SPI.transfer(dataToSend);
       SPI.transfer(val);
-      selectBrd(0x0e - m_nb_board);
+      selectBrd(0x00);
     }
 
     // Scan available modules.
@@ -79,14 +99,17 @@ class ClvHdEMG
     {
       m_nb_board = 0;
       byte val = 0;
-      for (unsigned i = 0; i < 16; i++)
+      for (unsigned i = 15; i >0; i--)
       {
+        
         //Serial.print(i);
         //Serial.print(" ");
         readRegister(0x40, &val, 1, i);
         //Serial.println((int)val);
         if (val == 0x01)
           m_nb_board++;
+        selectBrd(i);
+        delay(100);
       }
       return m_nb_board;
     }

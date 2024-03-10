@@ -19,7 +19,7 @@ main()
 	    std::cout << "CleverHand Serial Interface:" << std::endl;
 
         //setup the emg modules
-        int route_table[3][2] = {{0, 1}, {0, 1}, {0, 1}};
+        int route_table[3][2] = {{4, 5}, {0, 1}, {0, 1}};
         bool chx_enable[3] = {true, true, true};
         bool chx_high_res[3] = {true, true, true};
         bool chx_high_freq[3] = {true, true, true};

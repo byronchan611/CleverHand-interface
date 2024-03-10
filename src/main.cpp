@@ -20,7 +20,7 @@ main()
 
         //setup the emg modules
         int route_table[3][2] = {{0, 1}, {0, 1}, {0, 1}};
-        bool chx_enable[3] = {true, true, true};
+        bool chx_enable[3] = {true, false, false};
         bool chx_high_res[3] = {true, true, true};
         bool chx_high_freq[3] = {true, true, true};
         int R1[3] = {4, 4, 4};

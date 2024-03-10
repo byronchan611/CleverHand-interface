@@ -16,11 +16,9 @@
 #include <stdint.h> // uint8_t, uint16_t, uint32_t, uint64_t
 #include <stdio.h>  // Standard input/output definitions
 
-#include "clvHdEMG.hpp"   // EMG class
-#include "com_client.hpp" // COM class
-#include "registers.hpp"  // Registers class
-
-#define GLOBAL_VERBOSE_LEVEL 0
+#include "clvHdEMG.hpp"  // EMG class
+#include "registers.hpp" // Registers class
+#include <serial_client.hpp>
 
 namespace ClvHd
 {
@@ -35,17 +33,73 @@ class EMG;
  * @author Alexis Devillard
  * @date 2022
  */
-class Master : public Communication::Client
+class Master : public Communication::Serial
 {
     using clk = std::chrono::system_clock;
     using sec = std::chrono::duration<double>;
 
     public:
-    Master(int verbose = -1) : ESC::CLI(verbose, "ClvHd-Master"), m_verbose(verbose){};
+    Master(int verbose = -1)
+        : Communication::Serial(verbose), ESC::CLI(verbose, "ClvHd-Master"){};
     ~Master();
 
-    void
-    printBit(int8_t val);
+    /**
+     * @brief readReply Read a reply from the master board. The reply contains a timestamp, a size and the data.
+     *
+     * @param buff Buffer to store the data.
+     * @param timestamp Timestamp of the reply.
+     * @return int Number of bytes read.
+     */
+    int
+    readReply(uint8_t *buff, uint64_t *timestamp = nullptr)
+    {
+        //logln("Reading reply", true);
+        int n = this->readS(m_buffer, 9);
+        // logln("Read: " + std::to_string(n) + " bytes", true);
+        // logln("timestamp: " + std::to_string(*(uint64_t *)m_buffer) +
+        //           " size: " + std::to_string(m_buffer[8]),
+        //       true);
+        if(n == 9)
+        {
+            if(timestamp != nullptr)
+                *timestamp = *(uint64_t *)m_buffer;
+            n = this->readS(buff, m_buffer[8]);
+            return n;
+        }
+        else
+            return -1;
+    };
+
+    /**
+     * @brief sendCmd Send a command to the master board.
+     *
+     * @param cmd Command to send.
+     * @param id Id of the module to send the command to.
+     * @param data Data to send.
+     * @param size Size of the data to send.
+     * @return int 0 if the command was sent successfully, -1 otherwise.
+     */
+    int
+    sendCmd(uint8_t cmd,
+            uint8_t id = 0,
+            uint8_t *data = nullptr,
+            size_t size = 0)
+    {
+        uint8_t msg[m_packet_size] = {cmd, id};
+        for(int i = 0; i < size; i++) msg[i + 2] = data[i];
+        int n = this->writeS(msg, m_packet_size);
+        // log("Sent: [cmd: " + std::to_string(cmd) + " id: " + std::to_string(id) +
+        //         " data: ",
+        //     true);
+        // for(int i = 0; i < size; i++) log(std::to_string(data[i]) + " ", false);
+        // log("]\n", false);
+        if(n != m_packet_size)
+        {
+            logln("Error sending command", true);
+            return -1;
+        }
+        return size;
+    };
 
     /**
      * @brief readReg read size byte starting from reg address from the module with the given id.
@@ -57,268 +111,215 @@ class Master : public Communication::Client
      * @return int Number of bytes read.
      */
     int
-    readReg(uint8_t id, uint8_t reg, size_t size, const void *buff);
+    readReg(uint8_t id,
+            uint8_t reg,
+            uint8_t size,
+            const void *buff,
+            uint64_t *timestamp = nullptr);
 
-    int8_t
-    readReg8(uint8_t id, uint8_t reg);
-    int16_t
-    readReg16(uint8_t id, uint8_t reg);
-    int32_t
-    readReg32(uint8_t id, uint8_t reg);
-    int64_t
-    readReg64(uint8_t id, uint8_t reg);
-    float
-    readRegFloat(uint8_t id, uint8_t reg);
+    /**
+     * @brief writeReg write one byte to reg address to the module with the given id.
+     *
+     * @param id Id of the module to write to.
+     * @param reg Start address of the data to write.
+     * @param val Value to write.
+     * @return int Number of bytes written.
+     */
+    int
+    writeReg(uint8_t id, uint8_t reg, uint8_t val);
+
+    /**
+     * @brief Get the number of modules connected to the master board.
+     * @return The number of modules connected to the master board.
+     */
+    int
+    getNbModules()
+    {
+        sendCmd('n');
+        uint8_t nb_modules;
+        if(readReply(&nb_modules) == sizeof(nb_modules))
+            return nb_modules;
+        else
+            return -1;
+    };
+
+    /**
+     * @brief Check if the connection to the master board is established
+     * @return True if the connection is established, false otherwise.
+     */
+    bool
+    test_connection()
+    {
+        uint8_t arr[3] = {1, 2, 3};
+        int n = sendCmd('m', 0, arr, 3);
+        uint8_t ans[3];
+        if(readReply(ans) == 3)
+            return ans[0] == ans[0] && ans[1] == arr[1] && ans[2] == arr[2];
+        else
+            return false;
+    };
+
+    /**
+     * @brief Get the version of the master board.
+     * @return The version of the master board as a std::string. If an empty string is returned, an error occured.
+     */
+    std::string
+    getVersion(uint8_t *major = nullptr, uint8_t *minor = nullptr)
+    {
+        sendCmd('v');
+        uint8_t ans[2];
+        if(readReply(ans) == 2)
+        {
+            if(major != nullptr)
+                *major = ans[0];
+            if(minor != nullptr)
+                *minor = ans[1];
+            return std::to_string((int)ans[0]) + "." +
+                   std::to_string((int)ans[1]);
+        }
+        else
+            return "";
+    };
+
+    /**
+     * @brief setup Get the number of EMG modules connected to the master board.
+     * @return int The number of EMG modules connected to the master board.
+     */
+    int
+    setup();
+
+    /**
+     * @brief setupEMG Setup the EMG module with the given id.
+     *
+     * @param n_board Id of the EMG module to setup.
+     * @param route_table Route table of the EMG module.
+     * @param chx_enable Enable/disable of the EMG module.
+     * @param chx_high_res High resolution of the EMG module.
+     * @param chx_high_freq High frequency of the EMG module.
+     * @param R1 R1 of the EMG module.
+     * @param R2 R2 of the EMG module.
+     * @param R3 R3 of the EMG module.
+     */
+    int
+    setupEMG(int n_board,
+             int route_table[3][2],
+             bool chx_enable[3],
+             bool chx_high_res[3],
+             bool chx_high_freq[3],
+             int R1[3],
+             int R2,
+             int R3[3]);
+
+    /**
+     * @brief data_ready Check if the data is ready to be read from from the given channel of the module with the given id.
+     *
+     * @param id Id of the module to check.
+     * @param channel Channel to check.
+     * @param precise If true, the function will return true if the precise signal (3bytes) of the given channel is ready to be read. If false, the function will return true if the fast signal (2byte) of the given channel is ready to be read.
+     * @return true
+     * @return false
+     */
+    bool
+    data_ready(int id, int channel, bool precise = false);
+
+    /**
+     * @brief read_fast_data Read (actual request to the master board) the fast data(2byte) from the given channel of the module with the given id.
+     *
+     * @param id Id of the module to read from.
+     * @param channel Channel to read from.
+     * @return double Converted value of the fast data. Unit is mV.
+     */
     double
-    readRegDouble(uint8_t id, uint8_t reg);
+    read_fast_EMG(int id, int channel);
 
-  void serial_connection(std::string path)
-  {
-    this->open_connection(Communication::Client::Mode::SERIAL, path.c_str());
-  };
+    /**
+     * @brief read_precise_data Read (actual request to the master board) the precise data(3byte) from the given channel of the module with the given id.
+     *
+     * @param id Id of the module to read from.
+     * @param channel Channel to read from.
+     * @return double Converted value of the precise data. Unit is mV.
+     */
+    double
+    read_precise_EMG(int id, int channel);
 
-  /**
-   * @brief writeReg write one byte to reg address to the module with the given id.
-   *
-   * @param id Id of the module to write to.
-   * @param reg Start address of the data to write.
-   * @param val Value to write.
-   * @return int Number of bytes written.
-   */
-  int
-  writeReg(uint8_t id, uint8_t reg, char val);
+    /**
+     * @brief fast_EMG Read the previously requested fast data(2byte) from the given channel of the module with the given id.
+     *
+     * @param id Id of the module to read from.
+     * @param channel Channel to read from.
+     * @return double Converted value of the fast data. Unit is mV.
+     */
+    double
+    fast_EMG(int id, int channel);
 
-  /**
-   * @brief Get the number of modules connected to the master board.
-   * @return The number of modules connected to the master board.
-   */
-  int
-  getNbModules()
-  {
-      char msg[6] = {'n', 0, 0, 0};
-      writeS(msg, 4, true);
-      int n = readS((uint8_t *)msg, 4, true);
-      if(n == 4)
-          return msg[0];
-      else
-          return -1;
-  };
+    /**
+     * @brief precise_EMG Read the previously requested precise data(3byte) from the given channel of the module with the given id.
+     *
+     * @param id Id of the module to read from.
+     * @param channel Channel to read from.
+     * @return double Converted value of the precise data. Unit is mV.
+     */
+    double
+    precise_EMG(int id, int channel);
 
-  /**
-   * @brief Check if the connection to the master board is established
-   * @return True if the connection is established, false otherwise.
-   */
-  bool
-  test_connection()
-  {
-      char msg[6] = {'m', 1, 2, 3};
-      char ans[6];
-      writeS(msg, 4, true);
-      int n = readS((uint8_t *)ans, 6, true);
-      // logln(std::to_string(n) + " [ " + std::to_string((int)ans[0]) + " " +
-      //           std::to_string((int)ans[1]) + " " +
-      //           std::to_string((int)ans[2]) + " " +
-      //           std::to_string((int)ans[3]) + " ]",
-      //       true);
-      if(n != 6)
-          return false;
-      else
-          for(int i = 0; i < 4; i++)
-              if(ans[i] != msg[i])
-                  return false;
-      return true;
-  };
+    /**
+     * @brief Set all modules to converstion state.
+     */
+    int
+    start_acquisition();
 
-  /**
-   * @brief Trigger a blinking effect on the module with the given id.
-   * @param id Id of the module to blink.
-   * @param dt_cs Duration of the blinking in centiseconds
-   * @param nb_blink Number of blinking.
-   */
-  void
-  blink(uint8_t id, uint8_t dt_cs, uint8_t nb_blink)
-  {
-      uint8_t msg[6] = {'b', id, dt_cs, nb_blink};
-      writeS(msg, 4, true);
-  };
+    /**
+     * @brief Set all modules to standby state.
+     */
+    int
+    stop_acquisition();
 
-  /**
-   * @brief Get the version of the master board.
-   * @param i Index of the version value. For i = 1, the major version is returned. For i = 2, the minor version is returned. For i = 0, a short composed of the major and minor version is returned.
-   * @return The version of the master board. If 0 is returned, an error occured.
-   */
-  uint16_t
-  getVersion(int i)
-  {
-      char msg[6] = {'v', 0, 0, 0};
-      writeS(msg, 4, true);
-      if(readS((uint8_t *)msg, 4, true) == 4)
-      {
-          if(i == 0)
-              return *(uint16_t *)(msg);
-          if(i == 1)
-              return msg[0];
-          if(i == 2)
-              return msg[1];
-      }
-      return 0;
-  };
+    /**
+     * @brief Read all data registers (State, 3fast, 3precise) from each available module.
+     */
+    int
+    read_all_signal(uint64_t *timestamp = nullptr);
 
-  /**
-   * @brief Get the version of the master board.
-   * @return The version of the master board as a std::string. If an empty string is returned, an error occured.
-   */
-  std::string
-  getVersion()
-  {
-      char msg[6] = {'v', 0, 0, 0};
-      writeS(msg, 4, true);
-      if(readS((uint8_t *)msg, 4, true) == 4)
-          return std::to_string((int)msg[0]) + "." +
-                 std::to_string((int)msg[1]);
-      else
-          return "";
-  };
+    /**
+     * @brief get_error Get the active error from the module with the given id.
+     *
+     * @param id Id of the module to read from.
+     * @param verbose If true, the function will return a more detailed error message.
+     * @return std::string A list of the active error.
+     */
+    std::string
+    get_error(int id, bool verbose = false);
 
-  /**
-   * @brief setup Get the number of EMG modules connected to the master board.
-   * @return int The number of EMG modules connected to the master board.
-   */
-  int
-  setup();
+    bool
+    error_at(int id, int index);
 
-  /**
-   * @brief setupEMG Setup the EMG module with the given id.
-   *
-   * @param n_board Id of the EMG module to setup.
-   * @param route_table Route table of the EMG module.
-   * @param chx_enable Enable/disable of the EMG module.
-   * @param chx_high_res High resolution of the EMG module.
-   * @param chx_high_freq High frequency of the EMG module.
-   * @param R1 R1 of the EMG module.
-   * @param R2 R2 of the EMG module.
-   * @param R3 R3 of the EMG module.
-   */
-  int
-  setupEMG(int n_board,
-           int route_table[3][2],
-           bool chx_enable[3],
-           bool chx_high_res[3],
-           bool chx_high_freq[3],
-           int R1[3],
-           int R2,
-           int R3[3]);
+    operator std::string() const
+    {
+        return "Master board: " + std::to_string(m_EMG.size()) +
+               " EMG module(s) connected.";
+    };
 
-  /**
-   * @brief data_ready Check if the data is ready to be read from from the given channel of the module with the given id.
-   *
-   * @param id Id of the module to check.
-   * @param channel Channel to check.
-   * @param precise If true, the function will return true if the precise signal (3bytes) of the given channel is ready to be read. If false, the function will return true if the fast signal (2byte) of the given channel is ready to be read.
-   * @return true
-   * @return false
-   */
-  bool
-  data_ready(int id, int channel, bool precise = false);
+    std::string
+    repr() const
+    {
+        return "Master object";
+    };
 
-  /**
-   * @brief read_fast_data Read (actual request to the master board) the fast data(2byte) from the given channel of the module with the given id.
-   *
-   * @param id Id of the module to read from.
-   * @param channel Channel to read from.
-   * @return double Converted value of the fast data. Unit is mV.
-   */
-  double
-  read_fast_EMG(int id, int channel);
+    EMG &
+    emg(int i)
+    {
+        return *m_EMG[i];
+    };
 
-  /**
-   * @brief read_precise_data Read (actual request to the master board) the precise data(3byte) from the given channel of the module with the given id.
-   *
-   * @param id Id of the module to read from.
-   * @param channel Channel to read from.
-   * @return double Converted value of the precise data. Unit is mV.
-   */
-  double
-  read_precise_EMG(int id, int channel);
+    std::vector<EMG *> m_EMG;
 
-  /**
-   * @brief fast_EMG Read the previously requested fast data(2byte) from the given channel of the module with the given id.
-   *
-   * @param id Id of the module to read from.
-   * @param channel Channel to read from.
-   * @return double Converted value of the fast data. Unit is mV.
-   */
-  double
-  fast_EMG(int id, int channel);
-
-  /**
-   * @brief precise_EMG Read the previously requested precise data(3byte) from the given channel of the module with the given id.
-   *
-   * @param id Id of the module to read from.
-   * @param channel Channel to read from.
-   * @return double Converted value of the precise data. Unit is mV.
-   */
-  double
-  precise_EMG(int id, int channel);
-
-  /**
-   * @brief Set all modules to converstion state.
-   */
-  int
-  start_acquisition();
-
-  /**
-   * @brief Set all modules to standby state.
-   */
-  int
-  stop_acquisition();
-
-  /**
-   * @brief Read all data registers (State, 3fast, 3precise) from each available module.
-   */
-  int
-  read_all_signal();
-
-  /**
-   * @brief get_error Get the active error from the module with the given id.
-   *
-   * @param id Id of the module to read from.
-   * @param verbose If true, the function will return a more detailed error message.
-   * @return std::string A list of the active error.
-   */
-  std::string
-  get_error(int id, bool verbose = false);
-
-  bool
-  error_at(int id, int index);
-
-  operator std::string() const
-  {
-      return "Master board: " + std::to_string(m_EMG.size()) +
-             " EMG module(s) connected.";
-  };
-
-  std::string
-  repr() const
-  {
-      return "Master object";
-  };
-
-  EMG &
-  emg(int i)
-  {
-      return *m_EMG[i];
-  };
-
-  std::vector<EMG*> m_EMG;
-
-  private:
-  bool m_streaming = false;
-  ADS1293_Reg m_streaming_reg;
-  size_t m_streaming_size;
-  std::vector<std::pair<int, uint8_t>> m_streaming_channels;
-  uint8_t m_buffer[512];
-  int m_verbose;
+    private:
+    bool m_streaming = false;
+    ADS1293_Reg m_streaming_reg;
+    size_t m_streaming_size;
+    std::vector<std::pair<int, uint8_t>> m_streaming_channels;
+    uint8_t m_buffer[512];
+    int m_packet_size = 6;
 };
 } // namespace ClvHd
 #endif

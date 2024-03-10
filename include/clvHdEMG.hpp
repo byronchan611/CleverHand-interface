@@ -178,14 +178,13 @@ class EMG : virtual public ESC::CLI
 
 private:
     Master *m_master;
-    int m_id;
+    int m_module_id;
     Mode m_mode;
     uint8_t m_regs[0x50];
 
     int32_t *m_precise_value[3];
     int32_t m_fast_adc_max;
     int32_t m_precise_adc_max[3];
-    bool m_verbose = true;
 };
 } // namespace ClvHd
 #endif //CLV_HD_EMG_H

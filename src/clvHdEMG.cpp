@@ -45,13 +45,14 @@ EMG::setup(int route_table[3][2],
            bool chx_high_freq[3],
            int R1[3],
            int R2,
-           int R3[3])
+           int R3[3],
+              bool clock_intern)
 {
-    CLK_SRC clk_src = (m_module_id == 0)
+    CLK_SRC clk_src = (clock_intern)
                           ? INTERN
                           : EXTERN; //Start clk and output on CLK pin (0x05);
 
-    // standby mode (0x02) 
+    // standby mode (0x02)
     int n = this->set_mode(STANDBY);
     n += this->config_clock(true, clk_src, true);
     n += this->route_channel(0, route_table[0][0], route_table[0][1]);
@@ -78,7 +79,7 @@ EMG::setup(int route_table[3][2],
     logln("Seting up ADS1293 : " + ((n == 26) ? fstr(" OK", {BOLD, FG_GREEN})
                                               : fstr(" ERROR", {BOLD, FG_RED})),
           true);
-    logln("Set clock on CLK " + clk_src_s + "pin");
+    logln("Set clock on CLK " + clk_src_s);
     logln("           |   Ch1   |   Ch2   |   Ch3   |");
 
     log("           |", true);
@@ -131,16 +132,6 @@ EMG::route_channel(uint8_t channel, uint8_t pos_in, uint8_t neg_in)
     pos_in = (pos_in < 0) ? 0 : (pos_in > 6) ? 6 : pos_in;
     neg_in = (neg_in < 0) ? 0 : (neg_in > 6) ? 6 : neg_in;
 
-    if(pos_in == 5)
-        pos_in = 6;
-    else if(pos_in == 6)
-        pos_in = 5;
-
-    if(neg_in == 5)
-        neg_in = 6;
-    else if(neg_in == 6)
-        neg_in = 5;
-
     channel = ((channel < 0) ? 0 : (channel > 2) ? 2 : channel);
     uint8_t val = pos_in | (neg_in << 3);
     m_regs[FLEX_CH0_CN_REG + channel] = val;
@@ -150,7 +141,7 @@ EMG::route_channel(uint8_t channel, uint8_t pos_in, uint8_t neg_in)
 int
 EMG::get_route_neg(int ch)
 {
-    uint8_t val = 0; 
+    uint8_t val = 0;
     m_master->readReg(m_module_id, FLEX_CH0_CN_REG + ch, 1, &val);
     return ((val & 0b111000) >> 3);
 }
@@ -158,7 +149,7 @@ EMG::get_route_neg(int ch)
 int
 EMG::get_route_pos(int ch)
 {
-    uint8_t val = 0; 
+    uint8_t val = 0;
     m_master->readReg(m_module_id, FLEX_CH0_CN_REG + ch, 1, &val);
     return (val & 0b111);
 }
@@ -190,7 +181,7 @@ EMG::config_clock(bool start, CLK_SRC src, bool en_output)
 bool
 EMG::is_clock_started()
 {
-    uint8_t val = 0; 
+    uint8_t val = 0;
     m_master->readReg(m_module_id, OSC_CN_REG, 1, &val);
     return (val >> 2) & 0b1;
 }
@@ -198,17 +189,17 @@ EMG::is_clock_started()
 bool
 EMG::is_clock_ext()
 {
-    uint8_t val = 0; 
+    uint8_t val = 0;
     m_master->readReg(m_module_id, OSC_CN_REG, 1, &val);
     bool ret = (val >> 1) & 0b1;
-    //logln("is_clock_ext: " + std::to_string(ret));  
+    //logln("is_clock_ext: " + std::to_string(ret));
     return ret;
 }
 
 bool
 EMG::is_clock_output_enabled()
 {
-    uint8_t val = 0; 
+    uint8_t val = 0;
     m_master->readReg(m_module_id, OSC_CN_REG, 1, &val);
     return (val & 0b1);
 }
@@ -225,7 +216,7 @@ EMG::enable_ADC(bool ch0, bool ch1, bool ch2)
 bool
 EMG::is_ADC_enabled(int ch)
 {
-    uint8_t val = 0; 
+    uint8_t val = 0;
     m_master->readReg(m_module_id, AFE_SHDN_CN_REG, 1, &val);
     uint8_t mask = 0b001001;
     return !(val & (mask << ch));
@@ -243,7 +234,7 @@ EMG::enable_SDM(bool ch0, bool ch1, bool ch2)
 bool
 EMG::is_SDM_enabled(int ch)
 {
-    uint8_t val = 0; 
+    uint8_t val = 0;
     m_master->readReg(m_module_id, AFE_SHDN_CN_REG, 1, &val);
     return !((val >> (3 + ch)) & 0b1);
 }
@@ -260,7 +251,7 @@ EMG::enable_INA(bool ch0, bool ch1, bool ch2)
 bool
 EMG::is_INA_enabled(int ch)
 {
-    uint8_t val = 0; 
+    uint8_t val = 0;
     m_master->readReg(m_module_id, AFE_SHDN_CN_REG, 1, &val);
     return !((val >> (ch)) & 0b1);
 }
@@ -278,7 +269,7 @@ EMG::config_resolution(bool ch0_high_res, bool ch1_high_res, bool ch2_high_res)
 bool
 EMG::is_high_res_enabled(int ch)
 {
-    uint8_t val = 0; 
+    uint8_t val = 0;
     m_master->readReg(m_module_id, AFE_RES_REG, 1, &val);
     return ((val >> (ch)) & 0b1);
 }
@@ -298,7 +289,7 @@ EMG::config_frequence(bool ch0_freq_double,
 bool
 EMG::is_high_freq_enabled(int ch)
 {
-    uint8_t val = 0; 
+    uint8_t val = 0;
     m_master->readReg(m_module_id, AFE_RES_REG, 1, &val);
     return ((val >> (ch + 3)) & 0b1);
 }
@@ -317,7 +308,7 @@ EMG::config_R1(uint8_t R1_ch0, uint8_t R1_ch1, uint8_t R1_ch2)
 int
 EMG::get_R1(int ch)
 {
-    uint8_t val = 0; 
+    uint8_t val = 0;
     m_master->readReg(m_module_id, R1_RATE_REG, 1, &val);
     return ((val >> ch) & 0b1) ? 2 : 4;
 }
@@ -364,7 +355,7 @@ EMG::config_R2(uint8_t R2)
 int
 EMG::get_R2(int ch)
 {
-    uint8_t val = 0; 
+    uint8_t val = 0;
     m_master->readReg(m_module_id, R2_RATE_REG, 1, &val);
     switch(val & 0b1111)
     {
@@ -417,7 +408,7 @@ EMG::config_R3(int ch, uint8_t R3)
 int
 EMG::get_R3(int ch)
 {
-    uint8_t val = 0; 
+    uint8_t val = 0;
     m_master->readReg(m_module_id, R3_RATE_CH0_REG + ch, 1, &val);
     switch(val)
     {

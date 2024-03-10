@@ -53,12 +53,12 @@ class EMG : virtual public ESC::CLI
     };
 
     public:
-    EMG(Master *master, int id, int verbose=-1);
+    EMG(Master *master, int id, int verbose = -1);
     ~EMG();
 
     /**
      * @brief setup Write all setup parameters to the board.
-     * 
+     *
      * @param route_table Routing configuration of the EMG channels.
      * @param chx_enable Select which INA channels are enabled.
      * @param chx_high_res Select if the INA channels are high resolution.
@@ -74,7 +74,8 @@ class EMG : virtual public ESC::CLI
           bool chx_high_freq[3],
           int R1[3],
           int R2,
-          int R3[3]);
+          int R3[3],
+          bool clock_intern = true);
 
     int
     route_channel(uint8_t channel, uint8_t pos_in, uint8_t neg_in);
@@ -129,17 +130,20 @@ class EMG : virtual public ESC::CLI
     //2 or 4
     int
     config_R1(uint8_t R1_ch1, uint8_t R1_ch2, uint8_t R1_ch3);
-    int get_R1(int ch);
+    int
+    get_R1(int ch);
 
     //4, 5, 6 or 8
     int
     config_R2(uint8_t R2);
-    int get_R2(int ch=0);
+    int
+    get_R2(int ch = 0);
 
     //4, 6, 8, 12, 16, 32, 64, 128
     int
     config_R3(int ch, uint8_t R3);
-    int get_R3(int ch);
+    int
+    get_R3(int ch);
 
     double
     read_precise_value(int ch);
@@ -175,8 +179,7 @@ class EMG : virtual public ESC::CLI
     };
     int16_t *m_fast_value;
 
-
-private:
+    private:
     Master *m_master;
     int m_module_id;
     Mode m_mode;

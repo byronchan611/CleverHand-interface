@@ -4,8 +4,8 @@ namespace ClvHd
 {
 using namespace ESC;
 
-EMG::EMG(Master *master, int id, int verbose)
-    : m_master(master), m_module_id(id),
+EMG::EMG(Controller *controller, int id, int verbose)
+    : m_controller(controller), m_module_id(id),
       ESC::CLI(verbose, "EMG_" + std::to_string(id))
 {
     logln("Initialised", true);
@@ -36,7 +36,7 @@ EMG::EMG(Master *master, int id, int verbose)
         m_fast_value[0] = 0xabcd;
 };
 
-EMG::~EMG() { m_master->writeReg(m_module_id, CONFIG_REG, 0x02); }
+EMG::~EMG() { m_controller->writeReg(m_module_id, CONFIG_REG, 0x02); }
 
 int
 EMG::setup(int route_table[3][2],
@@ -135,14 +135,14 @@ EMG::route_channel(uint8_t channel, uint8_t pos_in, uint8_t neg_in)
     channel = ((channel < 0) ? 0 : (channel > 2) ? 2 : channel);
     uint8_t val = pos_in | (neg_in << 3);
     m_regs[FLEX_CH0_CN_REG + channel] = val;
-    return m_master->writeReg(m_module_id, FLEX_CH0_CN_REG + channel, val);
+    return m_controller->writeReg(m_module_id, FLEX_CH0_CN_REG + channel, val);
 }
 
 int
 EMG::get_route_neg(int ch)
 {
     uint8_t val = 0;
-    m_master->readReg(m_module_id, FLEX_CH0_CN_REG + ch, 1, &val);
+    m_controller->readReg(m_module_id, FLEX_CH0_CN_REG + ch, 1, &val);
     return ((val & 0b111000) >> 3);
 }
 
@@ -150,7 +150,7 @@ int
 EMG::get_route_pos(int ch)
 {
     uint8_t val = 0;
-    m_master->readReg(m_module_id, FLEX_CH0_CN_REG + ch, 1, &val);
+    m_controller->readReg(m_module_id, FLEX_CH0_CN_REG + ch, 1, &val);
     return (val & 0b111);
 }
 
@@ -159,14 +159,14 @@ EMG::set_mode(Mode mode)
 {
     m_mode = mode;
     m_regs[CONFIG_REG] = mode;
-    return m_master->writeReg(m_module_id, CONFIG_REG, mode);
+    return m_controller->writeReg(m_module_id, CONFIG_REG, mode);
 }
 
 EMG::Mode
 EMG::get_mode()
 {
     uint8_t val = 0;
-    m_master->readReg(m_module_id, CONFIG_REG, 1, &val);
+    m_controller->readReg(m_module_id, CONFIG_REG, 1, &val);
     return (Mode)(val);
 }
 
@@ -175,14 +175,14 @@ EMG::config_clock(bool start, CLK_SRC src, bool en_output)
 {
     uint8_t val = (start ? 0x4 : 0x0) | (src << 1) | (en_output ? 0x1 : 0x0);
     m_regs[OSC_CN_REG] = val;
-    return m_master->writeReg(m_module_id, OSC_CN_REG, val);
+    return m_controller->writeReg(m_module_id, OSC_CN_REG, val);
 }
 
 bool
 EMG::is_clock_started()
 {
     uint8_t val = 0;
-    m_master->readReg(m_module_id, OSC_CN_REG, 1, &val);
+    m_controller->readReg(m_module_id, OSC_CN_REG, 1, &val);
     return (val >> 2) & 0b1;
 }
 
@@ -190,7 +190,7 @@ bool
 EMG::is_clock_ext()
 {
     uint8_t val = 0;
-    m_master->readReg(m_module_id, OSC_CN_REG, 1, &val);
+    m_controller->readReg(m_module_id, OSC_CN_REG, 1, &val);
     bool ret = (val >> 1) & 0b1;
     //logln("is_clock_ext: " + std::to_string(ret));
     return ret;
@@ -200,7 +200,7 @@ bool
 EMG::is_clock_output_enabled()
 {
     uint8_t val = 0;
-    m_master->readReg(m_module_id, OSC_CN_REG, 1, &val);
+    m_controller->readReg(m_module_id, OSC_CN_REG, 1, &val);
     return (val & 0b1);
 }
 
@@ -210,14 +210,14 @@ EMG::enable_ADC(bool ch0, bool ch1, bool ch2)
     uint8_t val =
         (ch0 ? 0 : 0b001001) | (ch1 ? 0 : 0b010010) | (ch2 ? 0 : 0b100100);
     m_regs[AFE_SHDN_CN_REG] = val;
-    return m_master->writeReg(m_module_id, AFE_SHDN_CN_REG, val);
+    return m_controller->writeReg(m_module_id, AFE_SHDN_CN_REG, val);
 }
 
 bool
 EMG::is_ADC_enabled(int ch)
 {
     uint8_t val = 0;
-    m_master->readReg(m_module_id, AFE_SHDN_CN_REG, 1, &val);
+    m_controller->readReg(m_module_id, AFE_SHDN_CN_REG, 1, &val);
     uint8_t mask = 0b001001;
     return !(val & (mask << ch));
 }
@@ -228,14 +228,14 @@ EMG::enable_SDM(bool ch0, bool ch1, bool ch2)
     uint8_t val = (m_regs[AFE_SHDN_CN_REG] & 0b111) | (ch0 ? 0 : 0b1000) |
                   (ch1 ? 0 : 0b10000) | (ch2 ? 0 : 0b100000);
     m_regs[AFE_SHDN_CN_REG] = val;
-    return m_master->writeReg(m_module_id, AFE_SHDN_CN_REG, val);
+    return m_controller->writeReg(m_module_id, AFE_SHDN_CN_REG, val);
 }
 
 bool
 EMG::is_SDM_enabled(int ch)
 {
     uint8_t val = 0;
-    m_master->readReg(m_module_id, AFE_SHDN_CN_REG, 1, &val);
+    m_controller->readReg(m_module_id, AFE_SHDN_CN_REG, 1, &val);
     return !((val >> (3 + ch)) & 0b1);
 }
 
@@ -245,14 +245,14 @@ EMG::enable_INA(bool ch0, bool ch1, bool ch2)
     uint8_t val = (m_regs[AFE_SHDN_CN_REG] & 0b111000) | (ch0 ? 0 : 0b1) |
                   (ch1 ? 0 : 0b10) | (ch2 ? 0 : 0b100);
     m_regs[AFE_SHDN_CN_REG] = val;
-    return m_master->writeReg(m_module_id, AFE_SHDN_CN_REG, val);
+    return m_controller->writeReg(m_module_id, AFE_SHDN_CN_REG, val);
 }
 
 bool
 EMG::is_INA_enabled(int ch)
 {
     uint8_t val = 0;
-    m_master->readReg(m_module_id, AFE_SHDN_CN_REG, 1, &val);
+    m_controller->readReg(m_module_id, AFE_SHDN_CN_REG, 1, &val);
     return !((val >> (ch)) & 0b1);
 }
 
@@ -263,14 +263,14 @@ EMG::config_resolution(bool ch0_high_res, bool ch1_high_res, bool ch2_high_res)
                   (ch0_high_res ? 0b1 : 0) | (ch2_high_res ? 0b010 : 0) |
                   (ch2_high_res ? 0b100 : 0);
     m_regs[AFE_RES_REG] = val;
-    return m_master->writeReg(m_module_id, AFE_RES_REG, val);
+    return m_controller->writeReg(m_module_id, AFE_RES_REG, val);
 }
 
 bool
 EMG::is_high_res_enabled(int ch)
 {
     uint8_t val = 0;
-    m_master->readReg(m_module_id, AFE_RES_REG, 1, &val);
+    m_controller->readReg(m_module_id, AFE_RES_REG, 1, &val);
     return ((val >> (ch)) & 0b1);
 }
 
@@ -283,14 +283,14 @@ EMG::config_frequence(bool ch0_freq_double,
         (m_regs[AFE_RES_REG] & 0b111) | (ch0_freq_double ? 0b1000 : 0) |
         (ch1_freq_double ? 0b010000 : 0) | (ch2_freq_double ? 0b100000 : 0);
     m_regs[AFE_RES_REG] = val;
-    return m_master->writeReg(m_module_id, AFE_RES_REG, val);
+    return m_controller->writeReg(m_module_id, AFE_RES_REG, val);
 }
 
 bool
 EMG::is_high_freq_enabled(int ch)
 {
     uint8_t val = 0;
-    m_master->readReg(m_module_id, AFE_RES_REG, 1, &val);
+    m_controller->readReg(m_module_id, AFE_RES_REG, 1, &val);
     return ((val >> (ch + 3)) & 0b1);
 }
 
@@ -302,14 +302,14 @@ EMG::config_R1(uint8_t R1_ch0, uint8_t R1_ch1, uint8_t R1_ch2)
     R1_ch2 = (R1_ch2 < 3) ? 0b100 : 0; //2 or 4
     uint8_t val = R1_ch0 | R1_ch1 | R1_ch2;
     m_regs[R1_RATE_REG] = val;
-    return m_master->writeReg(m_module_id, R1_RATE_REG, val);
+    return m_controller->writeReg(m_module_id, R1_RATE_REG, val);
 }
 
 int
 EMG::get_R1(int ch)
 {
     uint8_t val = 0;
-    m_master->readReg(m_module_id, R1_RATE_REG, 1, &val);
+    m_controller->readReg(m_module_id, R1_RATE_REG, 1, &val);
     return ((val >> ch) & 0b1) ? 2 : 4;
 }
 
@@ -349,14 +349,14 @@ EMG::config_R2(uint8_t R2)
             m_precise_adc_max[i] = R3_val ? 0x800000 : 0xF30000;
     }
     m_regs[R2_RATE_REG] = R2;
-    return m_master->writeReg(m_module_id, R2_RATE_REG, R2);
+    return m_controller->writeReg(m_module_id, R2_RATE_REG, R2);
 }
 
 int
 EMG::get_R2(int ch)
 {
     uint8_t val = 0;
-    m_master->readReg(m_module_id, R2_RATE_REG, 1, &val);
+    m_controller->readReg(m_module_id, R2_RATE_REG, 1, &val);
     switch(val & 0b1111)
     {
     case 0b0001:
@@ -402,14 +402,14 @@ EMG::config_R3(int ch, uint8_t R3)
         m_precise_adc_max[ch] = R3_val ? 0x800000 : 0xF30000;
 
     m_regs[R3_RATE_CH0_REG + ch] = R3;
-    return m_master->writeReg(m_module_id, R3_RATE_CH0_REG + ch, R3);
+    return m_controller->writeReg(m_module_id, R3_RATE_CH0_REG + ch, R3);
 }
 
 int
 EMG::get_R3(int ch)
 {
     uint8_t val = 0;
-    m_master->readReg(m_module_id, R3_RATE_CH0_REG + ch, 1, &val);
+    m_controller->readReg(m_module_id, R3_RATE_CH0_REG + ch, 1, &val);
     switch(val)
     {
     case 0b00000001:
@@ -449,7 +449,7 @@ EMG::fast_value(int ch)
 double
 EMG::read_fast_value(int ch)
 {
-    m_master->readReg(m_module_id, DATA_CH0_PACE_REG + 2 * ch, 2,
+    m_controller->readReg(m_module_id, DATA_CH0_PACE_REG + 2 * ch, 2,
                       &(m_fast_value[ch]));
     return conv(m_fast_value[ch]);
 }
@@ -457,7 +457,7 @@ EMG::read_fast_value(int ch)
 double
 EMG::read_precise_value(int ch)
 {
-    m_master->readReg(m_module_id, DATA_CH0_ECG_REG + 3 * ch, 3,
+    m_controller->readReg(m_module_id, DATA_CH0_ECG_REG + 3 * ch, 3,
                       m_precise_value[ch]);
     return conv(ch, *m_precise_value[ch]);
 }
@@ -491,7 +491,7 @@ EMG::conv(int ch, int32_t val)
 int
 EMG::get_error()
 {
-    return m_master->readReg(m_module_id, ERROR_LOD_REG, 7,
+    return m_controller->readReg(m_module_id, ERROR_LOD_REG, 7,
                              &m_regs[ERROR_LOD_REG]);
     //return (Error *)&(m_regs[ERROR_LOD_REG]);
 }

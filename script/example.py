@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import pyclvhd
 
-m = pyclvhd.Master()
+m = pyclvhd.Controller()
 m.serial_connection(path="/dev/ttyACM0")
 n = m.setup()
 print("Found %d slaves" % n)

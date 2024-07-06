@@ -1,5 +1,5 @@
-#ifndef CLVHDMASTER_H
-#define CLVHDMASTER_H
+#ifndef CLVHDCONTROLLER_H
+#define CLVHDCONTROLLER_H
 
 #include <cmath>
 #include <cstring>
@@ -25,26 +25,26 @@ namespace ClvHd
 class EMG;
 
 /**
- * @brief The CleverHand Master board class
+ * @brief The CleverHand Controller board class
  *
  * This class is the main class of the library.
- * It is used to communicate with the master board and to read/write registers of each modules.
+ * It is used to communicate with the controller board and to read/write registers of each modules.
  *
  * @author Alexis Devillard
  * @date 2022
  */
-class Master : public Communication::Serial
+class Controller : public Communication::Serial
 {
     using clk = std::chrono::system_clock;
     using sec = std::chrono::duration<double>;
 
     public:
-    Master(int verbose = -1)
-        : Communication::Serial(verbose), ESC::CLI(verbose, "ClvHd-Master"){};
-    ~Master();
+    Controller(int verbose = -1)
+        : Communication::Serial(verbose), ESC::CLI(verbose, "ClvHd-Controller"){};
+    ~Controller();
 
     /**
-     * @brief readReply Read a reply from the master board. The reply contains a timestamp, a size and the data.
+     * @brief readReply Read a reply from the controller board. The reply contains a timestamp, a size and the data.
      *
      * @param buff Buffer to store the data.
      * @param timestamp Timestamp of the reply.
@@ -71,7 +71,7 @@ class Master : public Communication::Serial
     };
 
     /**
-     * @brief sendCmd Send a command to the master board.
+     * @brief sendCmd Send a command to the controller board.
      *
      * @param cmd Command to send.
      * @param id Id of the module to send the command to.
@@ -129,8 +129,8 @@ class Master : public Communication::Serial
     writeReg(uint8_t id, uint8_t reg, uint8_t val);
 
     /**
-     * @brief Get the number of modules connected to the master board.
-     * @return The number of modules connected to the master board.
+     * @brief Get the number of modules connected to the controller board.
+     * @return The number of modules connected to the controller board.
      */
     int
     getNbModules()
@@ -144,7 +144,7 @@ class Master : public Communication::Serial
     };
 
     /**
-     * @brief Check if the connection to the master board is established
+     * @brief Check if the connection to the controller board is established
      * @return True if the connection is established, false otherwise.
      */
     bool
@@ -160,8 +160,8 @@ class Master : public Communication::Serial
     };
 
     /**
-     * @brief Get the version of the master board.
-     * @return The version of the master board as a std::string. If an empty string is returned, an error occured.
+     * @brief Get the version of the controller board.
+     * @return The version of the controller board as a std::string. If an empty string is returned, an error occured.
      */
     std::string
     getVersion(uint8_t *major = nullptr, uint8_t *minor = nullptr)
@@ -182,8 +182,8 @@ class Master : public Communication::Serial
     };
 
     /**
-     * @brief setup Get the number of EMG modules connected to the master board.
-     * @return int The number of EMG modules connected to the master board.
+     * @brief setup Get the number of EMG modules connected to the controller board.
+     * @return int The number of EMG modules connected to the controller board.
      */
     int
     setup();
@@ -223,7 +223,7 @@ class Master : public Communication::Serial
     data_ready(int id, int channel, bool precise = false);
 
     /**
-     * @brief read_fast_data Read (actual request to the master board) the fast data(2byte) from the given channel of the module with the given id.
+     * @brief read_fast_data Read (actual request to the controller board) the fast data(2byte) from the given channel of the module with the given id.
      *
      * @param id Id of the module to read from.
      * @param channel Channel to read from.
@@ -233,7 +233,7 @@ class Master : public Communication::Serial
     read_fast_EMG(int id, int channel, bool converted = true);
 
     /**
-     * @brief read_precise_data Read (actual request to the master board) the precise data(3byte) from the given channel of the module with the given id.
+     * @brief read_precise_data Read (actual request to the controller board) the precise data(3byte) from the given channel of the module with the given id.
      *
      * @param id Id of the module to read from.
      * @param channel Channel to read from.
@@ -295,14 +295,14 @@ class Master : public Communication::Serial
 
     operator std::string() const
     {
-        return "Master board: " + std::to_string(m_EMG.size()) +
+        return "Controller board: " + std::to_string(m_EMG.size()) +
                " EMG module(s) connected.";
     };
 
     std::string
     repr() const
     {
-        return "Master object";
+        return "Controller object";
     };
 
     EMG &

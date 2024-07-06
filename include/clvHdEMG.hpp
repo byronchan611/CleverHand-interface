@@ -7,14 +7,14 @@
 #include <string>
 #include <vector>
 
-#include "clvHdMaster.hpp"
+#include "clvHdController.hpp"
 #include "registers.hpp"
 #include "strANSIseq.hpp"
 #include <stdint.h> // uint8_t, uint16_t, uint32_t, uint64_t
 
 namespace ClvHd
 {
-class Master;
+class Controller;
 
 using namespace std;
 
@@ -53,7 +53,7 @@ class EMG : virtual public ESC::CLI
     };
 
     public:
-    EMG(Master *master, int id, int verbose = -1);
+    EMG(Controller *controller, int id, int verbose = -1);
     ~EMG();
 
     /**
@@ -182,7 +182,7 @@ class EMG : virtual public ESC::CLI
     int16_t *m_fast_value;
 
     private:
-    Master *m_master;
+    Controller *m_controller;
     int m_module_id;
     Mode m_mode;
     uint8_t m_regs[0x50];

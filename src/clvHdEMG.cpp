@@ -46,7 +46,7 @@ EMG::setup(int route_table[3][2],
            int R1[3],
            int R2,
            int R3[3],
-              bool clock_intern)
+           bool clock_intern)
 {
     CLK_SRC clk_src = (clock_intern)
                           ? INTERN
@@ -89,7 +89,7 @@ EMG::setup(int route_table[3][2],
 
     log("Route      |", true);
     for(int i : {0, 1, 2})
-        log("(-)" + std::to_string(get_route_pos(i)) + " (+)" +
+        log("(-)" + std::to_string(get_route_neg(i)) + " (+)" +
             std::to_string(get_route_neg(i)) + "|");
     logln("");
 
@@ -134,7 +134,13 @@ EMG::route_channel(uint8_t channel, uint8_t pos_in, uint8_t neg_in)
 
     channel = ((channel < 0) ? 0 : (channel > 2) ? 2 : channel);
     uint8_t val = pos_in | (neg_in << 3);
+    if(pos_in==neg_in)
+        val|=0xc0;
     m_regs[FLEX_CH0_CN_REG + channel] = val;
+    logln("Route channel " + std::to_string(channel) + " to " +
+              std::to_string(pos_in) + " and " + std::to_string(neg_in),
+          true);
+    logln("Value: 0b" + byte2bits(val), true);
     return m_master->writeReg(m_module_id, FLEX_CH0_CN_REG + channel, val);
 }
 
@@ -434,32 +440,65 @@ EMG::get_R3(int ch)
 }
 
 double
-EMG::precise_value(int ch)
+EMG::precise_value(int ch, bool converted)
 {
-    double val = conv(ch, *m_precise_value[ch]);
-    return val;
+    if(converted)
+        return conv(ch, *m_precise_value[ch]);
+    else
+        return *m_precise_value[ch];
 };
 
 double
-EMG::fast_value(int ch)
+EMG::fast_value(int ch, bool converted)
+
 {
-    return conv(m_fast_value[ch]);
+    if(converted)
+        return conv(m_fast_value[ch]);
+    else
+        return m_fast_value[ch];
 };
 
 double
-EMG::read_fast_value(int ch)
+EMG::read_fast_value(int ch, bool converted)
+
 {
     m_master->readReg(m_module_id, DATA_CH0_PACE_REG + 2 * ch, 2,
                       &(m_fast_value[ch]));
-    return conv(m_fast_value[ch]);
+    if(converted)
+        return conv(m_fast_value[ch]);
+    else
+        return m_fast_value[ch];
 }
 
 double
-EMG::read_precise_value(int ch)
+EMG::read_precise_value(int ch, bool converted)
 {
-    m_master->readReg(m_module_id, DATA_CH0_ECG_REG + 3 * ch, 3,
+    int n = m_master->readReg(m_module_id, DATA_CH0_ECG_REG + 3 * ch, 3,
                       m_precise_value[ch]);
-    return conv(ch, *m_precise_value[ch]);
+    //logln("read_precise_value, n=" + std::to_string(n) + " reg=" + std::to_string(m_regs[DATA_CH0_ECG_REG + 3 * ch]) + " " + std::to_string(m_regs[DATA_CH0_ECG_REG + 3 * ch + 1]) + " " + std::to_string(m_regs[DATA_CH0_ECG_REG + 3 * ch + 2]), true);
+    if(converted)
+        return conv(ch, *m_precise_value[ch]);
+    else
+        return *m_precise_value[ch];
+}
+
+std::string EMG::dump_regs(bool pull)
+{
+    //read all the registers of the module
+    std::string str;
+    for(int i = 0; i < 0x50; i++)
+    {
+        if(pull)
+            m_master->readReg(m_module_id, i, 1, &m_regs[i]);
+        char buf[10];
+        sprintf(buf, "%02x", i);
+        str += "0x" + std::string(buf) ;
+        sprintf(buf, "%02x", m_regs[i]);
+        str += " : 0x" + std::string(buf);
+        sprintf(buf, "%03d", m_regs[i]);
+        str += " : " + std::string(buf) + " | 0b" + byte2bits(m_regs[i]) + "\n";
+    }
+    return str;
 }
 
 double

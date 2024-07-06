@@ -230,7 +230,7 @@ class Master : public Communication::Serial
      * @return double Converted value of the fast data. Unit is mV.
      */
     double
-    read_fast_EMG(int id, int channel);
+    read_fast_EMG(int id, int channel, bool converted = true);
 
     /**
      * @brief read_precise_data Read (actual request to the master board) the precise data(3byte) from the given channel of the module with the given id.
@@ -240,7 +240,7 @@ class Master : public Communication::Serial
      * @return double Converted value of the precise data. Unit is mV.
      */
     double
-    read_precise_EMG(int id, int channel);
+    read_precise_EMG(int id, int channel, bool converted = true);
 
     /**
      * @brief fast_EMG Read the previously requested fast data(2byte) from the given channel of the module with the given id.
@@ -250,7 +250,7 @@ class Master : public Communication::Serial
      * @return double Converted value of the fast data. Unit is mV.
      */
     double
-    fast_EMG(int id, int channel);
+    fast_EMG(int id, int channel, bool converted = true);
 
     /**
      * @brief precise_EMG Read the previously requested precise data(3byte) from the given channel of the module with the given id.
@@ -260,7 +260,7 @@ class Master : public Communication::Serial
      * @return double Converted value of the precise data. Unit is mV.
      */
     double
-    precise_EMG(int id, int channel);
+    precise_EMG(int id, int channel, bool converted = true);
 
     /**
      * @brief Set all modules to converstion state.

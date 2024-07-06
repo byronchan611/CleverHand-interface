@@ -60,27 +60,27 @@ Master::data_ready(int id, int channel, bool precise)
 }
 
 double
-Master::read_precise_EMG(int id, int channel)
+Master::read_precise_EMG(int id, int channel, bool converted)
 {
-    return m_EMG[id]->read_precise_value(channel);
+    return m_EMG[id]->read_precise_value(channel, converted);
 }
 
 double
-Master::read_fast_EMG(int id, int channel)
+Master::read_fast_EMG(int id, int channel, bool converted)
 {
-    return m_EMG[id]->read_fast_value(channel);
+    return m_EMG[id]->read_fast_value(channel, converted);
 }
 
 double
-Master::precise_EMG(int id, int channel)
+Master::precise_EMG(int id, int channel, bool converted)
 {
-    return m_EMG[id]->precise_value(channel);
+    return m_EMG[id]->precise_value(channel, converted);
 }
 
 double
-Master::fast_EMG(int id, int channel)
+Master::fast_EMG(int id, int channel, bool converted)
 {
-    return m_EMG[id]->fast_value(channel);
+    return m_EMG[id]->fast_value(channel, converted);
 }
 
 int
@@ -105,6 +105,8 @@ Master::read_all_signal(uint64_t *timestamp)
     uint8_t msg[2] = {DATA_STATUS_REG, 16};//read (satue + 3*pace(2bytes) + 3*pace(3bytes))=16 for each connected  modules
     sendCmd('r', 0, msg, 2);
     int n = readReply((uint8_t *)m_buffer, timestamp); 
+    uint8_t status = m_buffer[0];
+    logln("Timestamp:" + std::to_string(*timestamp)+ " Status: " + ESC::fstr(byte2bits(status), {ESC::FORMAT::FG_GREEN}), true);
     if(n==16 * m_EMG.size())
         for(int i = 0; i < m_EMG.size(); i++)
             std::copy(m_buffer + 16 * i, m_buffer + 16 * (i + 1),
